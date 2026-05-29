@@ -320,9 +320,10 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="/config.js"></script>
 <script>
-const API = window.location.protocol + '//' + window.location.hostname + ':3201';
-const ADMIN_PIN_ENV = '%%ADMIN_PIN%%';
+// config injected via config.js
+
 const MONTHS     = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const MONTHS_L   = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 const DAYS       = ['So','Mo','Di','Mi','Do','Fr','Sa'];
@@ -368,7 +369,7 @@ function goTo(name) {
 async function renderServices() {
   const list = document.getElementById('services-list');
   try {
-    state.services = await api('GET', '/api/services');
+    state.services = await api('GET', '/services');
   } catch { /* use cached */ }
   list.innerHTML = state.services.map(s => `
     <div class="service-card ${state.selectedService?.id === s.id ? 'selected' : ''}" onclick="selectService(${s.id})">
@@ -412,7 +413,7 @@ async function renderTimes() {
   if (!state.selectedDate) { grid.innerHTML = ''; return; }
   grid.innerHTML = '<div class="time-empty">Lädt …</div>';
   try {
-    const { open, slots } = await api('GET', `/api/slots?date=${state.selectedDate}`);
+    const { open, slots } = await api('GET', `/slots?date=${state.selectedDate}`);
     if (!open || !slots.length) { grid.innerHTML = '<div class="time-empty">An diesem Tag geschlossen 🌸</div>'; return; }
     const taken = state.appointments.filter(a => a.date === state.selectedDate).map(a => a.time);
     grid.innerHTML = slots.map(t => {
@@ -444,9 +445,9 @@ function updateFormSummary() {
 }
 
 // ── CALDAV ──
-const CALDAV_URL  = '%%CALDAV_URL%%';
-const CALDAV_USER = '%%CALDAV_USER%%';
-const CALDAV_PASS = '%%CALDAV_PASS%%';
+
+
+
 
 function toICSDate(dateStr, timeStr) { return dateStr.replace(/-/g,'') + 'T' + timeStr.replace(':','') + '00'; }
 
@@ -531,8 +532,8 @@ async function loadAdmin() {
   const pin = sessionStorage.getItem('cp_auth') ? ADMIN_PIN_ENV : null;
   if (!pin) { goTo('admin-login'); return; }
   try {
-    adminSchedule = await api('GET', '/api/schedule');
-    adminServices  = await api('GET', '/api/services');
+    adminSchedule = await api('GET', '/schedule');
+    adminServices  = await api('GET', '/services');
     renderScheduleTab();
     renderServicesTab();
   } catch(e) { showToast('Fehler beim Laden'); }
@@ -606,8 +607,8 @@ function renderServicesTab() {
 async function saveAll() {
   const pin = ADMIN_PIN_ENV;
   try {
-    await api('PUT', '/api/schedule', adminSchedule, pin);
-    await api('PUT', '/api/services',  adminServices,  pin);
+    await api('PUT', '/schedule', adminSchedule, pin);
+    await api('PUT', '/services',  adminServices,  pin);
     showToast('✓ Gespeichert!');
   } catch { showToast('Fehler beim Speichern'); }
 }
@@ -631,7 +632,7 @@ function startOver() {
 
 // ── INIT ──
 (async () => {
-  try { state.services = await api('GET', '/api/services'); } catch {}
+  try { state.services = await api('GET', '/services'); } catch {}
 })();
 </script>
 </body>

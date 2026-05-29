@@ -1,13 +1,14 @@
 #!/bin/sh
 set -e
-echo ">>> Injecting config into index.html..."
+echo ">>> Writing config.js..."
 
-CALDAV_FULL="http://${CALDAV_HOST}:${CALDAV_PORT}/${CALDAV_USER}/calendar/"
+cat > /usr/share/nginx/html/config.js << CONFIGEOF
+const API = window.location.protocol + '//' + window.location.hostname + ':3201';
+const ADMIN_PIN_ENV = '${ADMIN_PIN}';
+const CALDAV_URL  = 'http://${CALDAV_HOST}:${CALDAV_PORT}/${CALDAV_USER}/calendar/';
+const CALDAV_USER = '${CALDAV_USER}';
+const CALDAV_PASS = '${CALDAV_PASS}';
+CONFIGEOF
 
-sed -i "s|%%CALDAV_URL%%|${CALDAV_FULL}|g"  /usr/share/nginx/html/index.html
-sed -i "s|%%CALDAV_USER%%|${CALDAV_USER}|g" /usr/share/nginx/html/index.html
-sed -i "s|%%CALDAV_PASS%%|${CALDAV_PASS}|g" /usr/share/nginx/html/index.html
-sed -i "s|%%ADMIN_PIN%%|${ADMIN_PIN}|g"     /usr/share/nginx/html/index.html
-
-echo ">>> Config injected. Starting nginx..."
+echo ">>> config.js written. Starting nginx..."
 exec nginx -g 'daemon off;'

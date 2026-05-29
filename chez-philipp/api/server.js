@@ -73,13 +73,13 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { send(res, 204, {}); return; }
 
   // GET /api/services
-  if (req.method === 'GET' && url.pathname === '/api/services') {
+  if (req.method === 'GET' && url.pathname === '/services') {
     send(res, 200, readJSON(SERVICES_FILE, DEFAULT_SERVICES));
     return;
   }
 
   // PUT /api/services  (admin)
-  if (req.method === 'PUT' && url.pathname === '/api/services') {
+  if (req.method === 'PUT' && url.pathname === '/services') {
     if (!authAdmin(req, res)) return;
     try {
       const data = await body(req);
@@ -90,13 +90,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   // GET /api/schedule
-  if (req.method === 'GET' && url.pathname === '/api/schedule') {
+  if (req.method === 'GET' && url.pathname === '/schedule') {
     send(res, 200, readJSON(SCHEDULE_FILE, DEFAULT_SCHEDULE));
     return;
   }
 
   // PUT /api/schedule  (admin)
-  if (req.method === 'PUT' && url.pathname === '/api/schedule') {
+  if (req.method === 'PUT' && url.pathname === '/schedule') {
     if (!authAdmin(req, res)) return;
     try {
       const data = await body(req);
@@ -107,7 +107,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // GET /api/slots?date=YYYY-MM-DD
-  if (req.method === 'GET' && url.pathname === '/api/slots') {
+  if (req.method === 'GET' && url.pathname === '/slots') {
     const dateStr = url.searchParams.get('date');
     if (!dateStr) { send(res, 400, { error: 'date param required' }); return; }
     const schedule = readJSON(SCHEDULE_FILE, DEFAULT_SCHEDULE);
