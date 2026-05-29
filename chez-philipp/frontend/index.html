@@ -321,8 +321,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'CALDAV_URL'.includes('localhost') ? 'http://localhost:3201' : window.location.protocol + '//' + window.location.hostname + ':3201';
-const ADMIN_PIN_ENV = 'ADMIN_PIN_VALUE';
+const API = window.location.protocol + '//' + window.location.hostname + ':3201';
+const ADMIN_PIN_ENV = '%%ADMIN_PIN%%';
 const MONTHS     = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const MONTHS_L   = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 const DAYS       = ['So','Mo','Di','Mi','Do','Fr','Sa'];
@@ -444,9 +444,9 @@ function updateFormSummary() {
 }
 
 // ── CALDAV ──
-const CALDAV_URL  = 'CALDAV_URL_PLACEHOLDER';
-const CALDAV_USER = 'CALDAV_USER_PLACEHOLDER';
-const CALDAV_PASS = 'CALDAV_PASS_PLACEHOLDER';
+const CALDAV_URL  = '%%CALDAV_URL%%';
+const CALDAV_USER = '%%CALDAV_USER%%';
+const CALDAV_PASS = '%%CALDAV_PASS%%';
 
 function toICSDate(dateStr, timeStr) { return dateStr.replace(/-/g,'') + 'T' + timeStr.replace(':','') + '00'; }
 
