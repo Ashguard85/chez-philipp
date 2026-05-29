@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Chez Philipp · Nail Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream: #faf7f2;
+      --blush: #e8c5b0;
+      --dusty-rose: #c9957a;
+      --deep: #2a1f1a;
+      --mid: #6b4f40;
+      --gold: #c9a96e;
+      --white: #ffffff;
+      --glass: rgba(255,255,255,0.55);
+      --radius: 20px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--deep);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 0 env(safe-area-inset-bottom, 24px);
+      position: relative;
+      overflow: hidden;
+      background: var(--deep);
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 70% 20%, rgba(201,149,122,0.35) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 80% at 15% 85%, rgba(201,169,110,0.2) 0%, transparent 55%),
+        linear-gradient(160deg, #1a0f0a 0%, #2a1f1a 40%, #3d2518 100%);
+      z-index: 0;
+    }
+
+    .hero-grain {
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      z-index: 1;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 0 28px 44px;
+      width: 100%;
+    }
+
+    .hero-eyebrow {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.35em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.2s forwards;
+    }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(54px, 16vw, 80px);
+      font-weight: 300;
+      line-height: 0.9;
+      color: var(--cream);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.4s forwards;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: var(--blush);
+    }
+
+    .hero-sub {
+      font-size: 13px;
+      font-weight: 300;
+      color: rgba(250,247,242,0.55);
+      letter-spacing: 0.12em;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.6s forwards;
+    }
+
+    .hero-cta {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.8s forwards;
+    }
+
+    .btn-primary {
+      background: var(--dusty-rose);
+      color: var(--white);
+      border: none;
+      border-radius: 100px;
+      padding: 18px 40px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+      box-shadow: 0 8px 32px rgba(201,149,122,0.45);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-primary:active { transform: scale(0.97); box-shadow: 0 4px 16px rgba(201,149,122,0.3); }
+
+    .btn-ghost {
+      background: transparent;
+      color: rgba(250,247,242,0.6);
+      border: 1px solid rgba(250,247,242,0.2);
+      border-radius: 100px;
+      padding: 16px 40px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 300;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    /* ── NAV (in app) ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0; right: 0;
+      padding: 12px 8px calc(env(safe-area-inset-bottom, 0px) + 12px);
+      background: rgba(42,31,26,0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      justify-content: space-around;
+      z-index: 100;
+      border-top: 1px solid rgba(201,149,122,0.15);
+      display: none;
+    }
+
+    .bottom-nav.visible { display: flex; }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      color: rgba(250,247,242,0.45);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 500;
+      border: none;
+      background: transparent;
+    }
+
+    .nav-item.active { color: var(--blush); }
+    .nav-item svg { width: 22px; height: 22px; stroke-width: 1.5; }
+
+    /* ── SCREENS ── */
+    .screen {
+      display: none;
+      min-height: 100svh;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+      animation: fadeIn 0.3s ease;
+    }
+    .screen.active { display: block; }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
+
+    /* ── SCREEN HEADER ── */
+    .screen-header {
+      padding: calc(env(safe-area-inset-top, 44px) + 16px) 24px 24px;
+      background: var(--deep);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .screen-eyebrow {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .screen-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 34px;
+      font-weight: 300;
+      color: var(--cream);
+      line-height: 1.1;
+    }
+
+    .screen-title em { font-style: italic; color: var(--blush); }
+
+    /* ── SERVICES ── */
+    #services-screen { background: var(--cream); }
+
+    .services-list {
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .service-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s;
+      border: 2px solid transparent;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 2px 12px rgba(42,31,26,0.06);
+    }
+
+    .service-card:active { transform: scale(0.98); }
+    .service-card.selected {
+      border-color: var(--dusty-rose);
+      box-shadow: 0 4px 20px rgba(201,149,122,0.2);
+    }
+
+    .service-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--blush), var(--dusty-rose));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .service-info { flex: 1; }
+    .service-name { font-size: 16px; font-weight: 500; color: var(--deep); margin-bottom: 3px; }
+    .service-desc { font-size: 12px; color: var(--mid); font-weight: 300; }
+    .service-price {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--dusty-rose);
+    }
+
+    /* ── DATE PICKER ── */
+    #booking-screen { background: var(--cream); }
+
+    .date-strip {
+      padding: 20px 20px 8px;
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .date-strip::-webkit-scrollbar { display: none; }
+
+    .date-chip {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: var(--white);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 2px 10px rgba(42,31,26,0.05);
+      min-width: 58px;
+    }
+
+    .date-chip .day-name { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; color: var(--mid); text-transform: uppercase; }
+    .date-chip .day-num { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 300; color: var(--deep); line-height: 1; }
+    .date-chip.selected { background: var(--deep); border-color: var(--deep); }
+    .date-chip.selected .day-name { color: var(--gold); }
+    .date-chip.selected .day-num { color: var(--cream); }
+    .date-chip.today .day-num { color: var(--dusty-rose); }
+
+    .section-label {
+      padding: 20px 24px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      color: var(--mid);
+      text-transform: uppercase;
+    }
+
+    .time-grid {
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .time-chip {
+      padding: 14px 8px;
+      border-radius: 14px;
+      background: var(--white);
+      text-align: center;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--deep);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 2px 10px rgba(42,31,26,0.05);
+    }
+
+    .time-chip.selected { background: var(--dusty-rose); color: var(--white); border-color: var(--dusty-rose); box-shadow: 0 4px 16px rgba(201,149,122,0.3); }
+    .time-chip.taken { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+
+    /* ── BOOKING SUMMARY CARD ── */
+    .summary-sticky {
+      position: sticky;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+      left: 0; right: 0;
+      padding: 16px 20px;
+      z-index: 20;
+    }
+
+    .summary-card {
+      background: var(--deep);
+      border-radius: 20px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 8px 40px rgba(42,31,26,0.35);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+    }
+
+    .summary-card.visible { opacity: 1; transform: none; }
+
+    .summary-info .summary-service { font-size: 13px; color: var(--cream); font-weight: 500; }
+    .summary-info .summary-when { font-size: 12px; color: rgba(250,247,242,0.5); margin-top: 2px; font-weight: 300; }
+
+    .btn-book {
+      background: var(--dusty-rose);
+      color: var(--white);
+      border: none;
+      border-radius: 100px;
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.15s;
+    }
+
+    .btn-book:active { transform: scale(0.96); }
+
+    /* ── FORM ── */
+    #form-screen { background: var(--cream); }
+
+    .form-body { padding: 24px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    .field-group { display: flex; flex-direction: column; gap: 6px; }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      color: var(--mid);
+      text-transform: uppercase;
+    }
+
+    .field-input {
+      background: var(--white);
+      border: 2px solid transparent;
+      border-radius: 14px;
+      padding: 16px 18px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 300;
+      color: var(--deep);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+      -webkit-appearance: none;
+      box-shadow: 0 2px 10px rgba(42,31,26,0.05);
+    }
+
+    .field-input:focus { border-color: var(--dusty-rose); box-shadow: 0 4px 20px rgba(201,149,122,0.15); }
+
+    .field-input::placeholder { color: rgba(107,79,64,0.4); }
+
+    textarea.field-input { resize: none; height: 100px; }
+
+    .booking-summary-box {
+      background: var(--deep);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 4px;
+    }
+
+    .bsb-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+    .bsb-row + .bsb-row { border-top: 1px solid rgba(250,247,242,0.1); }
+    .bsb-label { font-size: 12px; color: rgba(250,247,242,0.5); font-weight: 300; }
+    .bsb-value { font-size: 14px; color: var(--cream); font-weight: 400; text-align: right; }
+    .bsb-price { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--gold); }
+
+    .btn-confirm {
+      background: linear-gradient(135deg, var(--dusty-rose), #b8775e);
+      color: var(--white);
+      border: none;
+      border-radius: 100px;
+      padding: 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
+      box-shadow: 0 8px 30px rgba(201,149,122,0.4);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-confirm:active { transform: scale(0.98); box-shadow: 0 4px 16px rgba(201,149,122,0.25); }
+
+    /* ── SUCCESS ── */
+    #success-screen {
+      display: none;
+      min-height: 100svh;
+      background: var(--deep);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 40px 32px;
+      animation: fadeIn 0.5s ease;
+    }
+
+    #success-screen.active { display: flex; }
+
+    .success-icon {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: rgba(201,149,122,0.15);
+      border: 2px solid var(--dusty-rose);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      margin-bottom: 28px;
+      animation: popIn 0.5s 0.2s both cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .success-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 42px;
+      font-weight: 300;
+      color: var(--cream);
+      margin-bottom: 12px;
+      line-height: 1.1;
+    }
+
+    .success-title em { font-style: italic; color: var(--blush); }
+
+    .success-sub {
+      font-size: 15px;
+      font-weight: 300;
+      color: rgba(250,247,242,0.55);
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    .success-detail-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(201,149,122,0.2);
+      border-radius: 20px;
+      padding: 24px;
+      width: 100%;
+      max-width: 340px;
+      margin-bottom: 40px;
+    }
+
+    .sdc-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+    .sdc-row + .sdc-row { border-top: 1px solid rgba(250,247,242,0.08); }
+    .sdc-label { font-size: 12px; color: rgba(250,247,242,0.4); }
+    .sdc-value { font-size: 14px; color: var(--cream); font-weight: 400; }
+
+    .btn-new {
+      background: transparent;
+      color: var(--blush);
+      border: 1px solid rgba(201,149,122,0.3);
+      border-radius: 100px;
+      padding: 16px 40px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s;
+    }
+
+    /* ── APPOINTMENTS ── */
+    #appointments-screen { background: var(--cream); }
+
+    .appt-list { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+    .appt-card {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(42,31,26,0.06);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .appt-date-box {
+      background: var(--deep);
+      border-radius: 14px;
+      padding: 10px 14px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .appt-date-box .adm { font-size: 10px; letter-spacing: 0.1em; color: var(--gold); text-transform: uppercase; }
+    .appt-date-box .add { font-family: 'Cormorant Garamond', serif; font-size: 30px; color: var(--cream); line-height: 1; }
+
+    .appt-info { flex: 1; }
+    .appt-service { font-size: 16px; font-weight: 500; color: var(--deep); }
+    .appt-time { font-size: 13px; color: var(--mid); margin-top: 2px; font-weight: 300; }
+
+    .appt-badge {
+      background: rgba(201,149,122,0.12);
+      color: var(--dusty-rose);
+      border-radius: 100px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 32px;
+    }
+
+    .empty-emoji { font-size: 48px; margin-bottom: 16px; }
+    .empty-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 300; color: var(--deep); margin-bottom: 8px; }
+    .empty-sub { font-size: 14px; color: var(--mid); font-weight: 300; }
+
+    /* ── SELECTED SERVICE PILL (on booking screen) ── */
+    .selected-service-pill {
+      margin: 0 20px 4px;
+      background: rgba(201,149,122,0.1);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      display: none;
+    }
+
+    .selected-service-pill.visible { display: flex; }
+    .ssp-icon { font-size: 18px; }
+    .ssp-name { font-size: 14px; font-weight: 500; color: var(--deep); flex: 1; }
+    .ssp-change { font-size: 12px; color: var(--dusty-rose); cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grain"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">Nail Studio · München</p>
+    <h1 class="hero-title">Chez<br><em>Philipp</em></h1>
+    <p class="hero-sub">Weil Schönheit Präzision verdient</p>
+    <div class="hero-cta">
+      <button class="btn-primary" onclick="goToBooking()">Jetzt Termin buchen</button>
+      <button class="btn-ghost" onclick="showScreen('appointments')">Meine Termine</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── BOTTOM NAV ── -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item active" data-screen="services" onclick="showScreen('services')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1 1 .03 2.798-1.442 2.798H4.24c-1.47 0-2.441-1.798-1.441-2.798L4.2 15.3"/></svg>
+    Services
+  </button>
+  <button class="nav-item" data-screen="booking" onclick="showScreen('booking')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+    Buchen
+  </button>
+  <button class="nav-item" data-screen="appointments" onclick="showScreen('appointments')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/></svg>
+    Termine
+  </button>
+</nav>
+
+<!-- ── SERVICES SCREEN ── -->
+<div class="screen" id="services-screen">
+  <div class="screen-header">
+    <p class="screen-eyebrow">Unsere Leistungen</p>
+    <h2 class="screen-title">Was darf es<br><em>heute sein?</em></h2>
+  </div>
+  <div class="services-list" id="services-list">
+    <!-- rendered by JS -->
+  </div>
+</div>
+
+<!-- ── BOOKING SCREEN ── -->
+<div class="screen" id="booking-screen">
+  <div class="screen-header">
+    <p class="screen-eyebrow">Termin wählen</p>
+    <h2 class="screen-title">Wann passt<br><em>es dir?</em></h2>
+  </div>
+
+  <div class="selected-service-pill" id="selected-service-pill">
+    <span class="ssp-icon" id="ssp-icon"></span>
+    <span class="ssp-name" id="ssp-name"></span>
+    <span class="ssp-change" onclick="showScreen('services')">Ändern</span>
+  </div>
+
+  <p class="section-label">Datum</p>
+  <div class="date-strip" id="date-strip"></div>
+
+  <p class="section-label">Uhrzeit</p>
+  <div class="time-grid" id="time-grid"></div>
+
+  <div class="summary-sticky">
+    <div class="summary-card" id="summary-card">
+      <div class="summary-info">
+        <div class="summary-service" id="sum-service">–</div>
+        <div class="summary-when" id="sum-when">–</div>
+      </div>
+      <button class="btn-book" onclick="showScreen('form')">Weiter →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── FORM SCREEN ── -->
+<div class="screen" id="form-screen">
+  <div class="screen-header">
+    <p class="screen-eyebrow">Fast geschafft!</p>
+    <h2 class="screen-title">Deine<br><em>Infos</em></h2>
+  </div>
+  <div class="form-body">
+
+    <div class="booking-summary-box">
+      <div class="bsb-row">
+        <span class="bsb-label">Service</span>
+        <span class="bsb-value" id="form-service">–</span>
+      </div>
+      <div class="bsb-row">
+        <span class="bsb-label">Datum & Uhrzeit</span>
+        <span class="bsb-value" id="form-when">–</span>
+      </div>
+      <div class="bsb-row">
+        <span class="bsb-label">Preis</span>
+        <span class="bsb-value bsb-price" id="form-price">–</span>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Dein Name</label>
+      <input class="field-input" id="input-name" type="text" placeholder="z.B. Anna Müller" autocomplete="name" />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Telefon / WhatsApp</label>
+      <input class="field-input" id="input-phone" type="tel" placeholder="+49 …" autocomplete="tel" />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Anmerkungen (optional)</label>
+      <textarea class="field-input" id="input-notes" placeholder="Besondere Wünsche, Allergien …"></textarea>
+    </div>
+
+    <button class="btn-confirm" onclick="confirmBooking()">✦ Termin bestätigen</button>
+  </div>
+</div>
+
+<!-- ── SUCCESS SCREEN ── -->
+<div class="screen" id="success-screen">
+  <div class="success-icon">💅</div>
+  <h2 class="success-title">Alles<br><em>perfekt!</em></h2>
+  <p class="success-sub">Dein Termin wurde gebucht.<br>Wir freuen uns auf dich!</p>
+  <div class="success-detail-card" id="success-detail"></div>
+  <button class="btn-new" onclick="startOver()">Neuen Termin buchen</button>
+</div>
+
+<!-- ── APPOINTMENTS SCREEN ── -->
+<div class="screen" id="appointments-screen">
+  <div class="screen-header">
+    <p class="screen-eyebrow">Übersicht</p>
+    <h2 class="screen-title">Deine<br><em>Termine</em></h2>
+  </div>
+  <div class="appt-list" id="appt-list"></div>
+</div>
+
+<script>
+// ── DATA ──
+const SERVICES = [
+  { id: 1, icon: '🤲', name: 'Nur Hände', desc: 'Pflege & Behandlung beider Hände', price: '1 Küsschen', duration: '45 Min.' },
+  { id: 2, icon: '🦶', name: 'Nur Füsse', desc: 'Pflege & Behandlung beider Füsse', price: '1 Küsschen', duration: '45 Min.' },
+  { id: 3, icon: '🤲🦶', name: 'Hände mit Fussmassage', desc: 'Handpflege plus entspannende Fussmassage', price: '1 Küsschen', duration: '75 Min.' },
+  { id: 4, icon: '✨', name: 'Hände und Füsse', desc: 'Das volle Programm für Hände & Füsse', price: '1 Küsschen', duration: '90 Min.' },
+  { id: 5, icon: '💆', name: 'Nur Fussmassage', desc: 'Tiefenentspannung pur für müde Füsse', price: '1 Küsschen', duration: '30 Min.' },
+  { id: 6, icon: '😍', name: 'Ich massiere deine Füsse', desc: 'Philipp himself – persönlich & mit Liebe', price: '1 Küsschen', duration: '60 Min.' },
+];
+
+const TIMES = ['09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
+const TAKEN = ['10:00','14:00','15:30']; // demo
+
+let state = {
+  selectedService: null,
+  selectedDate: null,
+  selectedTime: null,
+  appointments: JSON.parse(localStorage.getItem('cp_appointments') || '[]'),
+};
+
+// ── NAVIGATION ──
+function showScreen(name) {
+  document.getElementById('hero').style.display = 'none';
+  document.getElementById('bottom-nav').classList.add('visible');
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(name + '-screen').classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.screen === name);
+  });
+
+  if (name === 'appointments') renderAppointments();
+  if (name === 'form') updateFormSummary();
+  window.scrollTo(0,0);
+}
+
+function goToBooking() {
+  showScreen('services');
+}
+
+// ── SERVICES ──
+function renderServices() {
+  const list = document.getElementById('services-list');
+  list.innerHTML = SERVICES.map(s => `
+    <div class="service-card ${state.selectedService?.id === s.id ? 'selected' : ''}" onclick="selectService(${s.id})">
+      <div class="service-icon">${s.icon}</div>
+      <div class="service-info">
+        <div class="service-name">${s.name}</div>
+        <div class="service-desc">${s.desc} · ${s.duration}</div>
+      </div>
+      <div class="service-price">${s.price}</div>
+    </div>
+  `).join('');
+}
+
+function selectService(id) {
+  state.selectedService = SERVICES.find(s => s.id === id);
+  renderServices();
+  setTimeout(() => showScreen('booking'), 220);
+}
+
+// ── DATE STRIP ──
+function renderDates() {
+  const strip = document.getElementById('date-strip');
+  const days = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const today = new Date();
+  strip.innerHTML = '';
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const isToday = i === 0;
+    const dateStr = d.toISOString().split('T')[0];
+    const chip = document.createElement('div');
+    chip.className = `date-chip ${isToday ? 'today' : ''} ${state.selectedDate === dateStr ? 'selected' : ''}`;
+    chip.innerHTML = `<span class="day-name">${days[d.getDay()]}</span><span class="day-num">${d.getDate()}</span><span class="day-name">${months[d.getMonth()]}</span>`;
+    chip.onclick = () => { state.selectedDate = dateStr; renderDates(); renderTimes(); updateSummary(); };
+    strip.appendChild(chip);
+  }
+}
+
+// ── TIMES ──
+function renderTimes() {
+  const grid = document.getElementById('time-grid');
+  grid.innerHTML = TIMES.map(t => `
+    <div class="time-chip ${TAKEN.includes(t) ? 'taken' : ''} ${state.selectedTime === t ? 'selected' : ''}"
+      onclick="${TAKEN.includes(t) ? '' : `selectTime('${t}')`}">${t}</div>
+  `).join('');
+}
+
+function selectTime(t) {
+  state.selectedTime = t;
+  renderTimes();
+  updateSummary();
+}
+
+// ── SUMMARY ──
+function updateSummary() {
+  const card = document.getElementById('summary-card');
+  const pill = document.getElementById('selected-service-pill');
+
+  if (state.selectedService) {
+    document.getElementById('ssp-icon').textContent = state.selectedService.icon;
+    document.getElementById('ssp-name').textContent = state.selectedService.name;
+    pill.classList.add('visible');
+  }
+
+  if (state.selectedService && state.selectedDate && state.selectedTime) {
+    const d = new Date(state.selectedDate);
+    const days = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+    const dateLabel = `${days[d.getDay()]}, ${d.getDate()}. ${months[d.getMonth()]}`;
+    document.getElementById('sum-service').textContent = state.selectedService.name;
+    document.getElementById('sum-when').textContent = `${dateLabel} um ${state.selectedTime}`;
+    card.classList.add('visible');
+  }
+}
+
+function updateFormSummary() {
+  if (!state.selectedService || !state.selectedDate) return;
+  const d = new Date(state.selectedDate);
+  const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const dateLabel = `${d.getDate()}. ${months[d.getMonth()]} um ${state.selectedTime}`;
+  document.getElementById('form-service').textContent = state.selectedService.name;
+  document.getElementById('form-when').textContent = dateLabel;
+  document.getElementById('form-price').textContent = `${state.selectedService.price}€`;
+}
+
+// ── CALDAV CONFIG ──
+// Passe diese URL an deine Server-IP an!
+const CALDAV_URL = `http://${window.location.hostname}:5232/philipp/calendar/`;
+const CALDAV_USER = 'philipp';
+const CALDAV_PASS = 'geheim123'; // muss mit docker-compose.yml übereinstimmen
+
+function toICSDate(dateStr, timeStr) {
+  return dateStr.replace(/-/g, '') + 'T' + timeStr.replace(':', '') + '00';
+}
+
+async function postToCalDAV(appt) {
+  const uid = `chez-philipp-${appt.id}@local`;
+  const start = toICSDate(appt.date, appt.time);
+  // Dauer: 60 Min default
+  const endDate = new Date(`${appt.date}T${appt.time}:00`);
+  endDate.setMinutes(endDate.getMinutes() + 60);
+  const end = endDate.toISOString().replace(/[-:]/g,'').split('.')[0];
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Chez Philipp//DE',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').split('.')[0]}Z`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${appt.service.name} – ${appt.name}`,
+    `DESCRIPTION:Kunde: ${appt.name}\\nTel: ${appt.phone}\\nService: ${appt.service.name}\\nPreis: ${appt.service.price}\\nNotizen: ${appt.notes || '–'}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const url = `${CALDAV_URL}${uid}.ics`;
+  const credentials = btoa(`${CALDAV_USER}:${CALDAV_PASS}`);
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'Authorization': `Basic ${credentials}`,
+      },
+      body: ics,
+    });
+    return res.ok || res.status === 201 || res.status === 204;
+  } catch (e) {
+    console.error('CalDAV error:', e);
+    return false;
+  }
+}
+
+// ── BOOKING CONFIRM ──
+async function confirmBooking() {
+  const name = document.getElementById('input-name').value.trim();
+  const phone = document.getElementById('input-phone').value.trim();
+  if (!name || !phone) {
+    document.getElementById('input-name').style.borderColor = name ? '' : '#e05e5e';
+    document.getElementById('input-phone').style.borderColor = phone ? '' : '#e05e5e';
+    return;
+  }
+
+  const btn = document.querySelector('.btn-confirm');
+  btn.textContent = 'Wird gespeichert …';
+  btn.disabled = true;
+
+  const appt = {
+    id: Date.now(),
+    service: state.selectedService,
+    date: state.selectedDate,
+    time: state.selectedTime,
+    name,
+    phone,
+    notes: document.getElementById('input-notes').value,
+  };
+
+  // In CalDAV speichern
+  const calOk = await postToCalDAV(appt);
+
+  // Lokal als Backup
+  state.appointments.unshift(appt);
+  localStorage.setItem('cp_appointments', JSON.stringify(state.appointments));
+
+  btn.textContent = '✦ Termin bestätigen';
+  btn.disabled = false;
+
+  // Success screen
+  const d = new Date(appt.date);
+  const months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  const calStatus = calOk
+    ? `<div class="sdc-row"><span class="sdc-label">📅 Kalender</span><span class="sdc-value" style="color:#7ec67e">✓ Eingetragen</span></div>`
+    : `<div class="sdc-row"><span class="sdc-label">📅 Kalender</span><span class="sdc-value" style="color:#e08080">Offline gespeichert</span></div>`;
+
+  document.getElementById('success-detail').innerHTML = `
+    <div class="sdc-row"><span class="sdc-label">Name</span><span class="sdc-value">${appt.name}</span></div>
+    <div class="sdc-row"><span class="sdc-label">Service</span><span class="sdc-value">${appt.service.name}</span></div>
+    <div class="sdc-row"><span class="sdc-label">Datum</span><span class="sdc-value">${d.getDate()}. ${months[d.getMonth()]}</span></div>
+    <div class="sdc-row"><span class="sdc-label">Uhrzeit</span><span class="sdc-value">${appt.time} Uhr</span></div>
+    <div class="sdc-row"><span class="sdc-label">Preis</span><span class="sdc-value">${appt.service.price}</span></div>
+    ${calStatus}
+  `;
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('success-screen').classList.add('active');
+  document.getElementById('bottom-nav').classList.remove('visible');
+  window.scrollTo(0,0);
+}
+
+// ── APPOINTMENTS ──
+function renderAppointments() {
+  const list = document.getElementById('appt-list');
+  if (state.appointments.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🌸</div><div class="empty-title">Noch keine Termine</div><div class="empty-sub">Buch deinen ersten Termin<br>bei Chez Philipp!</div></div>`;
+    return;
+  }
+  const months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  list.innerHTML = state.appointments.map(a => {
+    const d = new Date(a.date);
+    return `
+      <div class="appt-card">
+        <div class="appt-date-box">
+          <div class="adm">${months[d.getMonth()]}</div>
+          <div class="add">${d.getDate()}</div>
+        </div>
+        <div class="appt-info">
+          <div class="appt-service">${a.service.name}</div>
+          <div class="appt-time">${a.time} Uhr · ${a.service.price}€</div>
+        </div>
+        <div class="appt-badge">Bestätigt</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function startOver() {
+  state.selectedService = null;
+  state.selectedDate = null;
+  state.selectedTime = null;
+  document.getElementById('input-name').value = '';
+  document.getElementById('input-phone').value = '';
+  document.getElementById('input-notes').value = '';
+  document.getElementById('summary-card').classList.remove('visible');
+  document.getElementById('selected-service-pill').classList.remove('visible');
+  document.getElementById('success-screen').classList.remove('active');
+  document.getElementById('bottom-nav').classList.add('visible');
+  renderServices();
+  renderDates();
+  renderTimes();
+  showScreen('services');
+}
+
+// ── INIT ──
+renderServices();
+renderDates();
+renderTimes();
+</script>
+</body>
+</html>
