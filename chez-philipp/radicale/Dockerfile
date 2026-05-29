@@ -1,13 +1,4 @@
-FROM python:3.11-alpine
-
-RUN pip install radicale bcrypt passlib
-
-RUN mkdir -p /data/collections
-
-COPY config /etc/radicale/config
-COPY setup.sh /setup.sh
-RUN chmod +x /setup.sh
-
-EXPOSE 5232
-
-CMD ["/setup.sh"]
+FROM alpine:latest
+COPY ../scripts/setup-cal.sh /setup-cal.sh
+RUN chmod +x /setup-cal.sh
+CMD ["/setup-cal.sh"]
