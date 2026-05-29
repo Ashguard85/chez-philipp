@@ -418,7 +418,9 @@ async function renderTimes() {
     const taken = state.appointments.filter(a => a.date === state.selectedDate).map(a => a.time);
     grid.innerHTML = slots.map(t => {
       const busy = taken.includes(t);
-      return `<div class="time-chip ${busy?'taken':''} ${state.selectedTime===t?'selected':''}" onclick="${busy?'':``selectTime('${t}')``}">${t}</div>`;
+      const cls = 'time-chip' + (busy?' taken':'') + (state.selectedTime===t?' selected':'');
+      const click = busy ? '' : `onclick="selectTime('${t}')"`;
+      return `<div class="${cls}" ${click}>${t}</div>`;
     }).join('');
   } catch { grid.innerHTML = '<div class="time-empty">Fehler beim Laden</div>'; }
 }
