@@ -614,7 +614,7 @@
   <div class="hero-bg"></div>
   <div class="hero-grain"></div>
   <div class="hero-content">
-    <p class="hero-eyebrow">Nail Studio · München</p>
+    <p class="hero-eyebrow">Nail Studio · Horw</p>
     <h1 class="hero-title">Chez<br><em>Philipp</em></h1>
     <p class="hero-sub">Weil Schönheit Präzision verdient</p>
     <div class="hero-cta">
@@ -711,7 +711,6 @@
 
     <div class="field-group">
       <label class="field-label">Telefon / WhatsApp</label>
-      <input class="field-input" id="input-phone" type="tel" placeholder="+49 …" autocomplete="tel" />
     </div>
 
     <div class="field-group">
@@ -899,7 +898,7 @@ async function postToCalDAV(appt) {
     `DTSTART:${start}`,
     `DTEND:${end}`,
     `SUMMARY:${appt.service.name} – ${appt.name}`,
-    `DESCRIPTION:Kunde: ${appt.name}\\nTel: ${appt.phone}\\nService: ${appt.service.name}\\nPreis: ${appt.service.price}\\nNotizen: ${appt.notes || '–'}`,
+    `DESCRIPTION:Kunde: ${appt.name}\\nService: ${appt.service.name}\\nPreis: ${appt.service.price}\\nNotizen: ${appt.notes || '–'}`,
     'END:VEVENT',
     'END:VCALENDAR'
   ].join('\r\n');
@@ -926,10 +925,8 @@ async function postToCalDAV(appt) {
 // ── BOOKING CONFIRM ──
 async function confirmBooking() {
   const name = document.getElementById('input-name').value.trim();
-  const phone = document.getElementById('input-phone').value.trim();
-  if (!name || !phone) {
+  if (!name) {
     document.getElementById('input-name').style.borderColor = name ? '' : '#e05e5e';
-    document.getElementById('input-phone').style.borderColor = phone ? '' : '#e05e5e';
     return;
   }
 
@@ -943,7 +940,6 @@ async function confirmBooking() {
     date: state.selectedDate,
     time: state.selectedTime,
     name,
-    phone,
     notes: document.getElementById('input-notes').value,
   };
 
@@ -1010,7 +1006,6 @@ function startOver() {
   state.selectedDate = null;
   state.selectedTime = null;
   document.getElementById('input-name').value = '';
-  document.getElementById('input-phone').value = '';
   document.getElementById('input-notes').value = '';
   document.getElementById('summary-card').classList.remove('visible');
   document.getElementById('selected-service-pill').classList.remove('visible');
