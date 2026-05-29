@@ -328,7 +328,7 @@ const MONTHS     = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt'
 const MONTHS_L   = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 const DAYS       = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 const DAYS_FULL  = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
-const ALL_SLOTS  = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30'];
+const ALL_SLOTS  = ['00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'];
 
 let state = {
   services: [],
@@ -373,7 +373,7 @@ async function renderServices() {
   } catch { /* use cached */ }
   list.innerHTML = state.services.map(s => `
     <div class="service-card ${state.selectedService?.id === s.id ? 'selected' : ''}" onclick="selectService(${s.id})">
-      <div class="service-icon">${s.icon}</div>
+      <div class="service-icon">${s.icon.startsWith('http')||s.icon.startsWith('/') ? `<img src="${s.icon}" style="width:100%;height:100%;object-fit:cover;border-radius:11px;" />` : s.icon}</div>
       <div class="service-info">
         <div class="service-name">${s.name}</div>
         <div class="service-desc">${s.desc}</div>
@@ -588,11 +588,11 @@ function renderServicesTab() {
     card.className = 'svc-card';
     card.innerHTML = `
       <div class="svc-card-header">
-        <span class="svc-card-icon">${s.icon}</span>
+        <span class="svc-card-icon" id="svc-preview-${i}">${s.icon.startsWith('http')||s.icon.startsWith('/') ? `<img src="${s.icon}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">` : s.icon}</span>
         <span class="svc-card-name">Service ${i+1}</span>
       </div>
       <div class="svc-row">
-        <input class="svc-input icon-input" value="${s.icon}" placeholder="🤲" oninput="adminServices[${i}].icon=this.value" />
+        <input class="svc-input icon-input" value="${s.icon}" placeholder="🤲 or URL" style="flex:0 0 80px" oninput="adminServices[${i}].icon=this.value; updateIconPreview(${i}, this.value)" />
         <input class="svc-input" value="${s.name}" placeholder="Name" oninput="adminServices[${i}].name=this.value" />
       </div>
       <div class="svc-row">
@@ -604,6 +604,13 @@ function renderServicesTab() {
       </div>`;
     wrap.appendChild(card);
   });
+}
+
+function updateIconPreview(i, val) {
+  const el = document.getElementById('svc-preview-' + i);
+  if (!el) return;
+  const isUrl = val.startsWith('http') || val.startsWith('/');
+  el.innerHTML = isUrl ? `<img src="${val}" style="width:40px;height:40px;object-fit:cover;border-radius:8px;">` : val;
 }
 
 async function saveAll() {
