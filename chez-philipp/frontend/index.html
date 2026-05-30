@@ -522,6 +522,9 @@ async function putCalDAV(appt) {
 async function confirmBooking() {
   const name = document.getElementById('input-name').value.trim();
   if (!name) { document.getElementById('input-name').style.borderColor = '#e05e5e'; return; }
+  if (!S.sel)  { showToast('Bitte zuerst einen Service wählen'); return; }
+  if (!S.date) { showToast('Bitte ein Datum wählen'); return; }
+  if (!S.time) { showToast('Bitte eine Uhrzeit wählen'); return; }
   const btn = document.querySelector('.btn-confirm');
   btn.textContent = 'Wird gespeichert …'; btn.disabled = true;
   const appt = { name, service: S.sel.name, date: S.date, time: S.time, price: S.sel.price, notes: document.getElementById('input-notes').value };

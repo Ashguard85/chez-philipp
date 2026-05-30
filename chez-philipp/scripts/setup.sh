@@ -55,7 +55,7 @@ CDIR="$UDIR/calendar"
 mkdir -p "$CDIR"
 
 [ -f "$ROOT/.Radicale.props" ] || printf '{}' > "$ROOT/.Radicale.props"
-[ -f "$UDIR/.Radicale.props" ] || printf '{"D:displayname": "%s"}' "${CALDAV_USER}" > "$UDIR/.Radicale.props"
+[ -f "$UDIR/.Radicale.props" ] || printf '{}' > "$UDIR/.Radicale.props"
 [ -f "$CDIR/.Radicale.props" ] || printf '{"D:displayname": "Chez Philipp", "tag": "VCALENDAR", "C:supported-calendar-component-set": "VEVENT"}' > "$CDIR/.Radicale.props"
 
 chmod -R 755 /data/collections 2>/dev/null || true

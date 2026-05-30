@@ -18,8 +18,8 @@ services:
       context: https://github.com/Ashguard85/chez-philipp.git#main:chez-philipp
       dockerfile: api/Dockerfile
     container_name: chez-philipp-api
-    ports:
-      - "3201:3201"
+    expose:
+      - "3201"
     volumes:
       - chez-philipp-api-data:/data
     environment:
@@ -31,8 +31,8 @@ services:
   chez-philipp-cal:
     image: tomsquest/docker-radicale:latest
     container_name: chez-philipp-cal
-    ports:
-      - "5232:5232"
+    expose:
+      - "5232"
     volumes:
       - chez-philipp-cal-data:/data
       - chez-philipp-cal-config:/config
