@@ -1,41 +1,28 @@
 #!/bin/sh
 set -e
-
-echo ">>> Chez Philipp Setup starting..."
+echo ">>> Chez Philipp CalDAV Setup..."
 
 apk add --no-cache python3 py3-pip > /dev/null 2>&1
 pip install bcrypt --quiet --break-system-packages > /dev/null 2>&1
 
-# Create user if not exists
+# ── User anlegen ──
 if [ ! -f /data/users ]; then
-  echo ">>> Creating CalDAV user: ${CALDAV_USER}"
+  echo ">>> Erstelle User: ${CALDAV_USER}"
   python3 -c "
 import bcrypt, os
-user = os.environ['CALDAV_USER']
-pw   = os.environ['CALDAV_PASS']
-h    = bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
-open('/data/users','w').write(f'{user}:{h}\n')
-print('User created:', user)
+u = os.environ['CALDAV_USER']
+p = os.environ['CALDAV_PASS']
+h = bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
+open('/data/users','w').write(f'{u}:{h}\n')
+print('User erstellt:', u)
 "
 else
-  echo ">>> User already exists, skipping."
+  echo ">>> User existiert bereits."
 fi
 
-# Create calendar folder structure
-COLPATH="/data/collections/collection-root/${CALDAV_USER}"
-mkdir -p "${COLPATH}/calendar"
-
-if [ ! -f "${COLPATH}/.Radicale.props" ]; then
-  echo ">>> Creating calendar collection..."
-  printf '{"D:displayname": "%s"}' "${CALDAV_USER}" > "${COLPATH}/.Radicale.props"
-  printf '{"D:displayname": "Chez Philipp", "tag": "VCALENDAR"}' > "${COLPATH}/calendar/.Radicale.props"
-else
-  echo ">>> Calendar already exists, skipping."
-fi
-
-# Write radicale config
-echo ">>> Writing radicale config..."
-cat > /config/radicale.conf << EOF
+# ── Radicale Config ──
+mkdir -p /config
+cat > /config/radicale.conf << CONF
 [server]
 hosts = 0.0.0.0:5232
 
@@ -47,6 +34,9 @@ htpasswd_encryption = bcrypt
 [storage]
 filesystem_folder = /data/collections
 
+[rights]
+type = owner_only
+
 [logging]
 level = info
 
@@ -56,6 +46,31 @@ Access-Control-Allow-Methods = GET, POST, PUT, DELETE, OPTIONS, PROPFIND, PROPPA
 Access-Control-Allow-Headers = Authorization, Content-Type, Depth, If-Match, If-None-Match, Lock-Token, Overwrite, Prefer, Destination, X-Client
 Access-Control-Expose-Headers = ETag, DAV
 Access-Control-Allow-Credentials = true
-EOF
+CONF
 
-echo ">>> Setup complete!"
+# ── Kalender Ordner ──
+COLROOT="/data/collections/collection-root"
+USERDIR="${COLROOT}/${CALDAV_USER}"
+CALDIR="${USERDIR}/calendar"
+
+mkdir -p "${CALDIR}"
+
+# Radicale braucht exakt dieses Format für die .props Dateien
+if [ ! -f "${COLROOT}/.Radicale.props" ]; then
+  printf '{}' > "${COLROOT}/.Radicale.props"
+fi
+
+if [ ! -f "${USERDIR}/.Radicale.props" ]; then
+  printf '{"D:displayname": "%s", "tag": "VCADDRESSBOOK"}' "${CALDAV_USER}" > "${USERDIR}/.Radicale.props"
+fi
+
+if [ ! -f "${CALDIR}/.Radicale.props" ]; then
+  printf '{"C:supported-calendar-component-set": "VEVENT", "D:displayname": "Chez Philipp", "tag": "VCALENDAR", "color": "#c9957a"}' > "${CALDIR}/.Radicale.props"
+fi
+
+# Berechtigungen
+chmod -R 755 /data/collections
+chmod 600 /data/users
+
+echo ">>> Setup abgeschlossen!"
+echo ">>> CalDAV URL: http://SERVER-IP:5232/${CALDAV_USER}/calendar/"
