@@ -192,6 +192,7 @@
     .bk-name{font-size:14px;font-weight:500;color:var(--deep)}
     .bk-svc{font-size:11px;color:var(--mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .bk-time{font-size:11px;color:var(--mid)}
+    .bk-notes{font-size:11px;color:var(--rose);margin-top:2px;font-style:italic}
     .bk-del{background:none;border:none;color:#e08080;font-size:20px;cursor:pointer;padding:4px 8px;-webkit-tap-highlight-color:transparent;flex-shrink:0}
     .admin-save-btn{display:block;width:calc(100% - 32px);margin:14px 16px 7px;background:linear-gradient(135deg,var(--rose),#b8775e);color:#fff;border:none;border-radius:100px;padding:17px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;box-shadow:0 8px 22px rgba(201,149,122,.35);-webkit-tap-highlight-color:transparent}
     .admin-logout{display:block;text-align:center;font-size:13px;color:var(--mid);margin:3px 0 22px;cursor:pointer}
@@ -678,7 +679,7 @@ async function loadAdminBookings() {
       const d = new Date(b.date);
       return `<div class="bk-card">
         <div class="bk-date"><div class="bk-dm">${MONTHS[d.getMonth()]}</div><div class="bk-dd">${d.getDate()}</div></div>
-        <div class="bk-info"><div class="bk-name">${b.name}</div><div class="bk-svc">${b.service}</div><div class="bk-time">${b.time} Uhr · ${b.price}</div></div>
+        <div class="bk-info"><div class="bk-name">${b.name}</div><div class="bk-svc">${b.service}</div><div class="bk-time">${b.time} Uhr · ${b.price}</div>${b.notes ? `<div class="bk-notes">💬 ${b.notes}</div>` : ''}</div>
         <button class="bk-del" onclick="delBooking(${b.id})">🗑</button>
       </div>`;
     }).join('');
