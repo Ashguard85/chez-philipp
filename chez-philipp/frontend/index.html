@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,viewport-fit=cover"/>
+  <title>Chez Philipp · Nail Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--cream:#faf7f2;--blush:#e8c5b0;--rose:#c9957a;--deep:#2a1f1a;--mid:#6b4f40;--gold:#c9a96e;--white:#fff}
+    html{scroll-behavior:smooth}
+    body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--deep);min-height:100vh;overflow-x:hidden}
+    input,textarea,select{font-size:16px!important;touch-action:manipulation}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+
+    /* HERO */
+    .hero{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 0 env(safe-area-inset-bottom,24px);position:relative;overflow:hidden;background:var(--deep)}
+    .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 20%,rgba(201,149,122,.35) 0%,transparent 65%),radial-gradient(ellipse 60% 80% at 15% 85%,rgba(201,169,110,.2) 0%,transparent 55%),linear-gradient(160deg,#1a0f0a 0%,#2a1f1a 40%,#3d2518 100%)}
+    .hero-content{position:relative;z-index:2;text-align:center;padding:0 28px 44px;width:100%}
+    .hero-eyebrow{font-size:10px;font-weight:500;letter-spacing:.35em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;opacity:0;animation:fadeUp .8s .2s forwards}
+    .hero-title{font-family:'Cormorant Garamond',serif;font-size:clamp(54px,16vw,80px);font-weight:300;line-height:.9;color:var(--cream);letter-spacing:-.02em;margin-bottom:8px;opacity:0;animation:fadeUp .9s .4s forwards}
+    .hero-title em{font-style:italic;color:var(--blush)}
+    .hero-sub{font-size:13px;font-weight:300;color:rgba(250,247,242,.55);letter-spacing:.12em;margin-bottom:48px;opacity:0;animation:fadeUp .9s .6s forwards}
+    .hero-cta{display:flex;flex-direction:column;gap:12px;opacity:0;animation:fadeUp .9s .8s forwards}
+
+    /* BUTTONS */
+    .btn{border:none;border-radius:100px;font-family:'DM Sans',sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+    .btn:active{transform:scale(.97)}
+    .btn-primary{background:var(--rose);color:#fff;padding:18px 40px;font-size:15px;font-weight:500;box-shadow:0 8px 32px rgba(201,149,122,.45);display:block;width:100%}
+    .btn-ghost{background:transparent;color:rgba(250,247,242,.6);border:1px solid rgba(250,247,242,.2);padding:16px 40px;font-size:14px;font-weight:300;display:block;width:100%}
+    .btn-confirm{background:linear-gradient(135deg,var(--rose),#b8775e);color:#fff;padding:20px;font-size:16px;font-weight:500;width:100%;box-shadow:0 8px 28px rgba(201,149,122,.4)}
+    .btn-book{background:var(--rose);color:#fff;padding:12px 20px;font-size:13px;font-weight:500;white-space:nowrap;border-radius:100px;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    .btn-new{background:transparent;color:var(--blush);border:1px solid rgba(201,149,122,.3);padding:15px 36px;font-size:14px}
+    .btn-back{background:none;border:none;color:rgba(250,247,242,.6);cursor:pointer;padding:4px;-webkit-tap-highlight-color:transparent;flex-shrink:0;margin-top:2px}
+    .btn-back svg{width:24px;height:24px;stroke-width:1.5}
+
+    /* NAV */
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;padding:10px 4px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(42,31,26,.93);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:none;justify-content:space-around;z-index:100;border-top:1px solid rgba(201,149,122,.15)}
+    .bottom-nav.visible{display:flex}
+    .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 12px;cursor:pointer;color:rgba(250,247,242,.4);font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;border:none;background:transparent;-webkit-tap-highlight-color:transparent}
+    .nav-item.active{color:var(--blush)}
+    .nav-item svg{width:22px;height:22px;stroke-width:1.5}
+
+    /* SCREENS */
+    .screen{display:none;min-height:100svh;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 80px);animation:fadeIn .3s ease}
+    .screen.active{display:block}
+    #success-screen{display:none}
+    #success-screen.active{display:flex}
+
+    /* HEADER */
+    .screen-header{padding:calc(env(safe-area-inset-top,44px) + 14px) 24px 20px;background:var(--deep);position:sticky;top:0;z-index:10}
+    .header-row{display:flex;align-items:flex-start;gap:14px}
+    .header-text .eyebrow{font-size:10px;font-weight:500;letter-spacing:.3em;color:var(--gold);text-transform:uppercase;margin-bottom:5px}
+    .header-text .title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--cream);line-height:1.1}
+    .header-text .title em{font-style:italic;color:var(--blush)}
+
+    /* SERVICES */
+    .list-wrap{padding:18px 16px;display:flex;flex-direction:column;gap:11px}
+    .service-card{background:var(--white);border-radius:18px;padding:16px;display:flex;align-items:center;gap:13px;cursor:pointer;border:2px solid transparent;box-shadow:0 2px 12px rgba(42,31,26,.06);-webkit-tap-highlight-color:transparent;transition:transform .12s}
+    .service-card:active{transform:scale(.98)}
+    .svc-icon{width:50px;height:50px;border-radius:13px;background:linear-gradient(135deg,var(--blush),var(--rose));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden}
+    .svc-icon img{width:100%;height:100%;object-fit:cover;border-radius:11px}
+    .svc-info{flex:1;min-width:0}
+    .svc-name{font-size:15px;font-weight:500;color:var(--deep);margin-bottom:2px}
+    .svc-desc{font-size:11px;color:var(--mid);font-weight:300;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .svc-right{text-align:right;flex-shrink:0}
+    .svc-price{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--rose)}
+    .svc-dur{font-size:10px;color:var(--mid)}
+    .svc-arr{font-size:18px;color:rgba(107,79,64,.3)}
+
+    /* DETAIL */
+    .detail-hero{background:var(--deep);padding-bottom:28px}
+    .detail-icon-wrap{display:flex;justify-content:center;padding:20px 0 18px}
+    .detail-icon-big{width:88px;height:88px;border-radius:24px;background:linear-gradient(135deg,var(--blush),var(--rose));display:flex;align-items:center;justify-content:center;font-size:38px;overflow:hidden;box-shadow:0 8px 32px rgba(201,149,122,.4)}
+    .detail-icon-big img{width:100%;height:100%;object-fit:cover;border-radius:22px}
+    .detail-name{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;color:var(--cream);text-align:center;padding:0 24px;line-height:1.2}
+    .detail-body{padding:22px 18px}
+    .detail-text{font-size:15px;font-weight:300;color:var(--mid);line-height:1.7;margin-bottom:22px}
+    .meta-row{display:flex;gap:10px;margin-bottom:26px}
+    .meta-chip{flex:1;background:var(--white);border-radius:15px;padding:13px;text-align:center;box-shadow:0 2px 10px rgba(42,31,26,.06)}
+    .meta-label{font-size:9px;font-weight:500;letter-spacing:.15em;color:var(--mid);text-transform:uppercase;margin-bottom:3px}
+    .meta-value{font-family:'Cormorant Garamond',serif;font-size:21px;color:var(--deep)}
+    .btn-book-detail{display:block;width:100%;background:linear-gradient(135deg,var(--rose),#b8775e);color:#fff;border:none;border-radius:100px;padding:19px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:500;cursor:pointer;box-shadow:0 8px 28px rgba(201,149,122,.4);-webkit-tap-highlight-color:transparent}
+
+    /* BOOKING */
+    .section-label{padding:16px 22px 9px;font-size:10px;font-weight:500;letter-spacing:.2em;color:var(--mid);text-transform:uppercase}
+    .date-strip{padding:0 16px 4px;display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .date-strip::-webkit-scrollbar{display:none}
+    .date-chip{flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:10px 12px;border-radius:14px;background:var(--white);cursor:pointer;border:2px solid transparent;transition:all .12s;box-shadow:0 2px 8px rgba(42,31,26,.05);min-width:52px;-webkit-tap-highlight-color:transparent}
+    .date-chip .dn{font-size:9px;font-weight:500;letter-spacing:.08em;color:var(--mid);text-transform:uppercase}
+    .date-chip .dd{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:300;color:var(--deep);line-height:1.1}
+    .date-chip.selected{background:var(--deep);border-color:var(--deep)}
+    .date-chip.selected .dn{color:var(--gold)}
+    .date-chip.selected .dd{color:var(--cream)}
+    .date-chip.today .dd{color:var(--rose)}
+    .time-grid{padding:0 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+    .time-chip{padding:12px 4px;border-radius:12px;background:var(--white);text-align:center;font-size:13px;color:var(--deep);cursor:pointer;border:2px solid transparent;transition:all .12s;box-shadow:0 2px 6px rgba(42,31,26,.05);-webkit-tap-highlight-color:transparent}
+    .time-chip.selected{background:var(--rose);color:#fff;border-color:var(--rose)}
+    .time-chip.taken{opacity:.3;cursor:default;text-decoration:line-through}
+    .time-empty{grid-column:1/-1;text-align:center;padding:28px;color:var(--mid);font-size:14px;font-weight:300}
+    .summary-bar{position:sticky;bottom:80px;padding:10px 16px}
+    .summary-card{background:var(--deep);border-radius:17px;padding:13px 17px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(42,31,26,.4);opacity:0;transform:translateY(8px);transition:all .25s}
+    .summary-card.visible{opacity:1;transform:none}
+    .sum-name{font-size:13px;color:var(--cream);font-weight:500}
+    .sum-when{font-size:11px;color:rgba(250,247,242,.5);margin-top:1px}
+
+    /* FORM */
+    .form-body{padding:20px 16px;display:flex;flex-direction:column;gap:13px}
+    .bsummary{background:var(--deep);border-radius:17px;padding:17px}
+    .bsrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+    .bsrow+.bsrow{border-top:1px solid rgba(250,247,242,.1)}
+    .bslabel{font-size:11px;color:rgba(250,247,242,.5)}
+    .bsval{font-size:13px;color:var(--cream);text-align:right}
+    .bsprice{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--gold)}
+    .field-group{display:flex;flex-direction:column;gap:5px}
+    .field-label{font-size:10px;font-weight:500;letter-spacing:.15em;color:var(--mid);text-transform:uppercase}
+    .field-input{background:var(--white);border:2px solid transparent;border-radius:13px;padding:15px 16px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:300;color:var(--deep);outline:none;transition:border-color .2s;width:100%;box-shadow:0 2px 8px rgba(42,31,26,.05);-webkit-appearance:none}
+    .field-input:focus{border-color:var(--rose)}
+    .field-input::placeholder{color:rgba(107,79,64,.35)}
+    textarea.field-input{resize:none;height:88px}
+
+    /* SUCCESS */
+    #success-screen{min-height:100svh;background:var(--deep);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 28px}
+    .success-icon{width:80px;height:80px;border-radius:50%;background:rgba(201,149,122,.12);border:2px solid var(--rose);display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:22px;animation:popIn .5s .2s both cubic-bezier(.34,1.56,.64,1)}
+    .success-title{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:300;color:var(--cream);margin-bottom:10px;line-height:1.1}
+    .success-title em{font-style:italic;color:var(--blush)}
+    .success-sub{font-size:14px;font-weight:300;color:rgba(250,247,242,.55);line-height:1.6;margin-bottom:26px}
+    .sdc{background:rgba(255,255,255,.06);border:1px solid rgba(201,149,122,.2);border-radius:17px;padding:18px;width:100%;max-width:340px;margin-bottom:30px}
+    .sdc-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0}
+    .sdc-row+.sdc-row{border-top:1px solid rgba(250,247,242,.08)}
+    .sdc-label{font-size:11px;color:rgba(250,247,242,.4)}
+    .sdc-value{font-size:13px;color:var(--cream)}
+
+    /* APPOINTMENTS */
+    .appt-card{background:var(--white);border-radius:17px;padding:15px;box-shadow:0 2px 10px rgba(42,31,26,.06);display:flex;gap:13px;align-items:center}
+    .appt-date{background:var(--deep);border-radius:12px;padding:9px 11px;text-align:center;flex-shrink:0}
+    .appt-dm{font-size:9px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
+    .appt-dd{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--cream);line-height:1}
+    .appt-info{flex:1}
+    .appt-svc{font-size:14px;font-weight:500;color:var(--deep)}
+    .appt-time{font-size:12px;color:var(--mid);margin-top:2px;font-weight:300}
+    .appt-badge{background:rgba(201,149,122,.12);color:var(--rose);border-radius:100px;padding:5px 10px;font-size:10px;font-weight:500;white-space:nowrap}
+    .empty{text-align:center;padding:50px 24px}
+    .empty-emoji{font-size:40px;margin-bottom:12px}
+    .empty-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--deep);margin-bottom:7px}
+    .empty-sub{font-size:13px;color:var(--mid);font-weight:300;line-height:1.5}
+
+    /* ADMIN */
+    #admin-login-screen,#admin-screen{background:var(--cream)}
+    .login-box{margin:48px 18px 0;background:var(--deep);border-radius:22px;padding:34px 22px;text-align:center}
+    .login-icon{font-size:34px;margin-bottom:13px}
+    .login-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;color:var(--cream);margin-bottom:5px}
+    .login-sub{font-size:13px;color:rgba(250,247,242,.45);margin-bottom:22px}
+    .login-error{color:#e08080;font-size:12px;margin-top:8px;min-height:18px}
+    .admin-tabs{display:flex;margin:14px 16px 0;gap:7px}
+    .admin-tab{flex:1;padding:11px;text-align:center;border-radius:12px;font-size:12px;font-weight:500;cursor:pointer;background:var(--white);color:var(--mid);border:none;-webkit-tap-highlight-color:transparent}
+    .admin-tab.active{background:var(--deep);color:var(--cream)}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+    .admin-section{margin:14px 16px 0}
+    .admin-section-title{font-size:10px;font-weight:500;letter-spacing:.25em;text-transform:uppercase;color:var(--mid);margin-bottom:9px;padding-left:2px}
+    .day-card{background:var(--white);border-radius:16px;margin-bottom:9px;overflow:hidden;box-shadow:0 2px 8px rgba(42,31,26,.05)}
+    .day-header{display:flex;align-items:center;justify-content:space-between;padding:14px 17px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+    .day-name{font-size:14px;font-weight:500;color:var(--deep)}
+    .day-count{font-size:11px;color:var(--mid)}
+    .toggle{width:42px;height:25px;background:#ddd;border-radius:100px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+    .toggle.on{background:var(--rose)}
+    .toggle::after{content:'';position:absolute;width:19px;height:19px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    .toggle.on::after{transform:translateX(17px)}
+    .day-slots{padding:0 13px 13px;display:none;grid-template-columns:repeat(4,1fr);gap:5px}
+    .day-slots.open{display:grid}
+    .slot-btn{padding:9px 3px;border-radius:9px;background:#f0ece6;text-align:center;font-size:12px;color:var(--mid);cursor:pointer;border:2px solid transparent;-webkit-tap-highlight-color:transparent}
+    .slot-btn.on{background:var(--deep);color:var(--cream)}
+    .svc-admin-card{background:var(--white);border-radius:16px;margin-bottom:9px;padding:15px 16px;box-shadow:0 2px 8px rgba(42,31,26,.05)}
+    .svc-admin-header{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+    .svc-preview{font-size:26px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:11px;background:linear-gradient(135deg,var(--blush),var(--rose));overflow:hidden;flex-shrink:0}
+    .svc-preview img{width:100%;height:100%;object-fit:cover}
+    .svc-admin-name{font-size:14px;font-weight:500;color:var(--deep)}
+    .svc-input{flex:1;background:#f7f4ef;border:2px solid transparent;border-radius:10px;padding:11px 12px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--deep);outline:none;-webkit-appearance:none}
+    .svc-input:focus{border-color:var(--rose)}
+    .svc-row{display:flex;gap:7px;margin-bottom:7px}
+    .svc-textarea{width:100%;background:#f7f4ef;border:2px solid transparent;border-radius:10px;padding:11px 12px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--deep);outline:none;resize:none;height:68px;margin-bottom:7px}
+    .svc-textarea:focus{border-color:var(--rose)}
+    .bk-card{background:var(--white);border-radius:16px;margin-bottom:9px;padding:14px 16px;box-shadow:0 2px 8px rgba(42,31,26,.05);display:flex;align-items:center;gap:12px}
+    .bk-date{background:var(--deep);border-radius:11px;padding:8px 10px;text-align:center;flex-shrink:0}
+    .bk-dm{font-size:9px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
+    .bk-dd{font-family:'Cormorant Garamond',serif;font-size:23px;color:var(--cream);line-height:1}
+    .bk-info{flex:1;min-width:0}
+    .bk-name{font-size:14px;font-weight:500;color:var(--deep)}
+    .bk-svc{font-size:11px;color:var(--mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .bk-time{font-size:11px;color:var(--mid)}
+    .bk-del{background:none;border:none;color:#e08080;font-size:20px;cursor:pointer;padding:4px 8px;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+    .admin-save-btn{display:block;width:calc(100% - 32px);margin:14px 16px 7px;background:linear-gradient(135deg,var(--rose),#b8775e);color:#fff;border:none;border-radius:100px;padding:17px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;box-shadow:0 8px 22px rgba(201,149,122,.35);-webkit-tap-highlight-color:transparent}
+    .admin-logout{display:block;text-align:center;font-size:13px;color:var(--mid);margin:3px 0 22px;cursor:pointer}
+    .toast{position:fixed;bottom:95px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--deep);color:var(--cream);padding:11px 22px;border-radius:100px;font-size:13px;opacity:0;transition:all .3s;z-index:300;pointer-events:none;white-space:nowrap}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .loading{text-align:center;padding:36px;color:var(--mid);font-size:14px}
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">Nail Studio · Horw</p>
+    <h1 class="hero-title">Chez<br><em>Philipp</em></h1>
+    <p class="hero-sub">Weil Schönheit Präzision verdient</p>
+    <div class="hero-cta">
+      <button class="btn btn-primary" onclick="goTo('services')">Jetzt Termin buchen</button>
+      <button class="btn btn-ghost" onclick="goTo('appointments')" style="margin-top:0">Meine Termine</button>
+    </div>
+  </div>
+</section>
+
+<!-- NAV -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item" data-s="services" onclick="goTo('services')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1 1 .03 2.798-1.442 2.798H4.24c-1.47 0-2.441-1.798-1.441-2.798L4.2 15.3"/></svg>
+    Services
+  </button>
+  <button class="nav-item" data-s="booking" onclick="goTo('booking')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+    Buchen
+  </button>
+  <button class="nav-item" data-s="appointments" onclick="goTo('appointments')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"/></svg>
+    Termine
+  </button>
+  <button class="nav-item" data-s="admin" onclick="goTo('admin-login')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    Admin
+  </button>
+</nav>
+
+<!-- SERVICES -->
+<div class="screen" id="services-screen">
+  <div class="screen-header">
+    <div class="header-text"><p class="eyebrow">Unsere Leistungen</p><h2 class="title">Was darf es<br><em>heute sein?</em></h2></div>
+  </div>
+  <div class="list-wrap" id="services-list"><div class="loading">Lädt …</div></div>
+</div>
+
+<!-- DETAIL -->
+<div class="screen" id="detail-screen">
+  <div class="detail-hero">
+    <div class="screen-header" style="background:transparent;position:relative">
+      <div class="header-row">
+        <button class="btn-back" onclick="goTo('services')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg></button>
+        <div class="header-text"><p class="eyebrow" id="detail-eyebrow">Service</p></div>
+      </div>
+    </div>
+    <div class="detail-icon-wrap"><div class="detail-icon-big" id="detail-icon"></div></div>
+    <div class="detail-name" id="detail-name"></div>
+  </div>
+  <div class="detail-body">
+    <p class="detail-text" id="detail-text"></p>
+    <div class="meta-row">
+      <div class="meta-chip"><div class="meta-label">Dauer</div><div class="meta-value" id="detail-dur"></div></div>
+      <div class="meta-chip"><div class="meta-label">Preis</div><div class="meta-value" id="detail-price"></div></div>
+    </div>
+    <button class="btn-book-detail" onclick="bookFromDetail()">Jetzt buchen →</button>
+  </div>
+</div>
+
+<!-- BOOKING -->
+<div class="screen" id="booking-screen">
+  <div class="screen-header">
+    <div class="header-row">
+      <button class="btn-back" onclick="goTo('services')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg></button>
+      <div class="header-text"><p class="eyebrow">Termin wählen</p><h2 class="title">Wann passt<br><em>es dir?</em></h2></div>
+    </div>
+  </div>
+  <p class="section-label">Datum</p>
+  <div class="date-strip" id="date-strip"></div>
+  <p class="section-label">Uhrzeit</p>
+  <div class="time-grid" id="time-grid"></div>
+  <div class="summary-bar">
+    <div class="summary-card" id="summary-card">
+      <div><div class="sum-name" id="sum-name">–</div><div class="sum-when" id="sum-when">–</div></div>
+      <button class="btn-book" onclick="goTo('form')">Weiter →</button>
+    </div>
+  </div>
+</div>
+
+<!-- FORM -->
+<div class="screen" id="form-screen">
+  <div class="screen-header">
+    <div class="header-row">
+      <button class="btn-back" onclick="goTo('booking')"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg></button>
+      <div class="header-text"><p class="eyebrow">Fast geschafft!</p><h2 class="title">Deine<br><em>Infos</em></h2></div>
+    </div>
+  </div>
+  <div class="form-body">
+    <div class="bsummary">
+      <div class="bsrow"><span class="bslabel">Service</span><span class="bsval" id="form-svc">–</span></div>
+      <div class="bsrow"><span class="bslabel">Datum & Zeit</span><span class="bsval" id="form-when">–</span></div>
+      <div class="bsrow"><span class="bslabel">Preis</span><span class="bsval bsprice" id="form-price">–</span></div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Dein Name</label>
+      <input class="field-input" id="input-name" type="text" placeholder="z.B. Anna Müller" autocomplete="name"/>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Anmerkungen (optional)</label>
+      <textarea class="field-input" id="input-notes" placeholder="Besondere Wünsche …"></textarea>
+    </div>
+    <button class="btn btn-confirm" onclick="confirmBooking()">✦ Termin bestätigen</button>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="screen" id="success-screen">
+  <div class="success-icon">💅</div>
+  <h2 class="success-title">Alles<br><em>perfekt!</em></h2>
+  <p class="success-sub">Dein Termin wurde gebucht.<br>Wir freuen uns auf dich!</p>
+  <div class="sdc" id="success-detail"></div>
+  <button class="btn btn-new" onclick="startOver()">Neuen Termin buchen</button>
+</div>
+
+<!-- APPOINTMENTS -->
+<div class="screen" id="appointments-screen">
+  <div class="screen-header">
+    <div class="header-text"><p class="eyebrow">Übersicht</p><h2 class="title">Deine<br><em>Termine</em></h2></div>
+  </div>
+  <div class="list-wrap">
+    <div class="field-group">
+      <label class="field-label">Dein Name</label>
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <input class="field-input" id="appt-name" type="text" placeholder="z.B. Anna Müller" style="flex:1" onkeydown="if(event.key==='Enter')searchAppts()"/>
+        <button class="btn-book" onclick="searchAppts()">Suchen</button>
+      </div>
+    </div>
+    <div id="appt-results"></div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div class="screen" id="admin-login-screen">
+  <div class="screen-header"><div class="header-text"><p class="eyebrow">Nur für Philipp</p><h2 class="title">Admin<br><em>Bereich</em></h2></div></div>
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Willkommen zurück</div>
+    <div class="login-sub">Bitte PIN eingeben</div>
+    <input class="field-input" id="admin-pin" type="password" inputmode="numeric" placeholder="PIN" style="text-align:center;letter-spacing:.3em" onkeydown="if(event.key==='Enter')checkPin()"/>
+    <div class="login-error" id="admin-error"></div>
+    <button class="btn btn-primary" style="margin-top:16px" onclick="checkPin()">Einloggen</button>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="screen" id="admin-screen">
+  <div class="screen-header"><div class="header-text"><p class="eyebrow">Administration</p><h2 class="title">Chez <em>Philipp</em></h2></div></div>
+  <div class="admin-tabs">
+    <div class="admin-tab active" onclick="switchTab('schedule')">Zeitplan</div>
+    <div class="admin-tab" onclick="switchTab('services')">Services</div>
+    <div class="admin-tab" onclick="switchTab('bookings')">Termine</div>
+  </div>
+  <div id="tab-schedule" class="tab-content active"></div>
+  <div id="tab-services" class="tab-content"></div>
+  <div id="tab-bookings" class="tab-content"></div>
+  <button class="admin-save-btn" id="admin-save-btn" onclick="saveAll()">✦ Speichern</button>
+  <span class="admin-logout" onclick="adminLogout()">Ausloggen</span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/config.js"></script>
+<script>
+const MONTHS   = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const MONTHS_L = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const DAYS     = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const DAYS_F   = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const ALL_SLOTS= ['00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'];
+
+let S = { services:[], sel:null, date:null, time:null };
+let adminSched=null, adminSvcs=null;
+
+async function apiFetch(method, path, body, pin) {
+  const h = {'Content-Type':'application/json; charset=utf-8'};
+  if (pin) h['X-Admin-Pin'] = pin;
+  const r = await fetch(API + path, {method, headers:h, body:body?JSON.stringify(body):undefined});
+  if (!r.ok && r.status !== 201) throw new Error(await r.text());
+  return r.json();
+}
+
+function goTo(name) {
+  document.getElementById('hero').style.display = 'none';
+  document.getElementById('bottom-nav').classList.add('visible');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(name + '-screen').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.s === name));
+  window.scrollTo(0, 0);
+  if (name === 'services')    loadServices();
+  if (name === 'booking')     { renderDates(); renderTimes(); }
+  if (name === 'admin-login') { if (sessionStorage.getItem('auth')) { goTo('admin'); loadAdmin(); } }
+  if (name === 'admin')       loadAdmin();
+  if (name === 'form')        fillFormSummary();
+}
+
+function iconEl(icon, radius) {
+  if (icon && (icon.startsWith('http') || icon.startsWith('/')))
+    return `<img src="${icon}" style="width:100%;height:100%;object-fit:cover;border-radius:${radius}">`;
+  return icon || '💅';
+}
+
+// ── SERVICES ──
+async function loadServices() {
+  const el = document.getElementById('services-list');
+  try {
+    S.services = await apiFetch('GET', '/services');
+    el.innerHTML = S.services.map(s => `
+      <div class="service-card" onclick="showDetail(${s.id})">
+        <div class="svc-icon">${iconEl(s.icon,'11px')}</div>
+        <div class="svc-info"><div class="svc-name">${s.name}</div><div class="svc-desc">${s.desc}</div></div>
+        <div class="svc-right"><div class="svc-price">${s.price}</div><div class="svc-dur">${s.duration}</div><div class="svc-arr">›</div></div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="loading" style="color:#e08080">Fehler: ${e.message}<br>API: ${API}</div>`;
+  }
+}
+
+function showDetail(id) {
+  S.sel = S.services.find(x => x.id === id);
+  if (!S.sel) return;
+  document.getElementById('detail-eyebrow').textContent = S.sel.duration;
+  document.getElementById('detail-name').textContent = S.sel.name;
+  document.getElementById('detail-icon').innerHTML = iconEl(S.sel.icon, '22px');
+  document.getElementById('detail-text').textContent = S.sel.details || S.sel.desc;
+  document.getElementById('detail-dur').textContent = S.sel.duration;
+  document.getElementById('detail-price').textContent = S.sel.price;
+  goTo('detail');
+}
+
+function bookFromDetail() { goTo('booking'); renderDates(); renderTimes(); }
+
+// ── DATES ──
+function renderDates() {
+  const strip = document.getElementById('date-strip');
+  const today = new Date();
+  strip.innerHTML = '';
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    const ds = d.toISOString().split('T')[0];
+    const el = document.createElement('div');
+    el.className = `date-chip ${i===0?'today':''} ${S.date===ds?'selected':''}`;
+    el.innerHTML = `<span class="dn">${DAYS[d.getDay()]}</span><span class="dd">${d.getDate()}</span><span class="dn">${MONTHS[d.getMonth()]}</span>`;
+    el.onclick = () => { S.date = ds; S.time = null; renderDates(); renderTimes(); updateSummary(); };
+    strip.appendChild(el);
+  }
+}
+
+// ── TIMES ──
+async function renderTimes() {
+  const grid = document.getElementById('time-grid');
+  if (!S.date) { grid.innerHTML = ''; return; }
+  grid.innerHTML = '<div class="time-empty">Lädt …</div>';
+  try {
+    const {open, slots} = await apiFetch('GET', `/slots?date=${S.date}`);
+    if (!open || !slots.length) { grid.innerHTML = '<div class="time-empty">An diesem Tag geschlossen 🌸</div>'; return; }
+    grid.innerHTML = slots.map(t => {
+      const sel = S.time === t;
+      return `<div class="time-chip ${sel?'selected':''}" onclick="pickTime('${t}')">${t}</div>`;
+    }).join('');
+  } catch { grid.innerHTML = '<div class="time-empty">Fehler beim Laden</div>'; }
+}
+
+function pickTime(t) { S.time = t; renderTimes(); updateSummary(); }
+
+function updateSummary() {
+  const card = document.getElementById('summary-card');
+  if (S.sel && S.date && S.time) {
+    const d = new Date(S.date);
+    document.getElementById('sum-name').textContent = S.sel.name;
+    document.getElementById('sum-when').textContent = `${DAYS[d.getDay()]}, ${d.getDate()}. ${MONTHS[d.getMonth()]} · ${S.time}`;
+    card.classList.add('visible');
+  } else card.classList.remove('visible');
+}
+
+function fillFormSummary() {
+  if (!S.sel || !S.date) return;
+  const d = new Date(S.date);
+  document.getElementById('form-svc').textContent   = S.sel.name;
+  document.getElementById('form-when').textContent  = `${d.getDate()}. ${MONTHS_L[d.getMonth()]} · ${S.time}`;
+  document.getElementById('form-price').textContent = S.sel.price;
+}
+
+// ── CALDAV ──
+async function putCalDAV(appt) {
+  const uid = `cp-${appt.id}@chezphilipp`;
+  const fmt = (ds, ts) => ds.replace(/-/g,'') + 'T' + ts.replace(':','') + '00';
+  const start = fmt(appt.date, appt.time);
+  const endD  = new Date(`${appt.date}T${appt.time}:00`); endD.setMinutes(endD.getMinutes()+60);
+  const end   = endD.toISOString().replace(/[-:]/g,'').split('.')[0];
+  const ics   = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Chez Philipp//DE',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').split('.')[0]}Z`,
+    `DTSTART:${start}`,`DTEND:${end}`,
+    `SUMMARY:${appt.service} – ${appt.name}`,
+    `DESCRIPTION:Kunde: ${appt.name}\\nService: ${appt.service}\\nNotizen: ${appt.notes||'–'}`,
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  try {
+    const r = await fetch(`${CALDAV_URL}${uid}.ics`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'Authorization': 'Basic ' + btoa(`${CALDAV_USER}:${CALDAV_PASS}`)
+      },
+      body: ics
+    });
+    return r.ok || r.status === 201 || r.status === 204;
+  } catch(e) { console.error('CalDAV:', e); return false; }
+}
+
+// ── CONFIRM BOOKING ──
+async function confirmBooking() {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) { document.getElementById('input-name').style.borderColor = '#e05e5e'; return; }
+  const btn = document.querySelector('.btn-confirm');
+  btn.textContent = 'Wird gespeichert …'; btn.disabled = true;
+  const appt = { name, service: S.sel.name, date: S.date, time: S.time, price: S.sel.price, notes: document.getElementById('input-notes').value };
+  let id = Date.now();
+  try {
+    const res = await apiFetch('POST', '/bookings', appt);
+    id = res.id;
+  } catch(e) { console.error('Booking error:', e); }
+  const calOk = await putCalDAV({...appt, id});
+  btn.textContent = '✦ Termin bestätigen'; btn.disabled = false;
+  const d = new Date(appt.date);
+  document.getElementById('success-detail').innerHTML = `
+    <div class="sdc-row"><span class="sdc-label">Name</span><span class="sdc-value">${appt.name}</span></div>
+    <div class="sdc-row"><span class="sdc-label">Service</span><span class="sdc-value">${appt.service}</span></div>
+    <div class="sdc-row"><span class="sdc-label">Datum</span><span class="sdc-value">${d.getDate()}. ${MONTHS_L[d.getMonth()]}</span></div>
+    <div class="sdc-row"><span class="sdc-label">Uhrzeit</span><span class="sdc-value">${appt.time} Uhr</span></div>
+    <div class="sdc-row"><span class="sdc-label">Preis</span><span class="sdc-value">${appt.price}</span></div>
+    <div class="sdc-row"><span class="sdc-label">Kalender</span><span class="sdc-value" style="color:${calOk?'#7ec67e':'#e08080'}">${calOk?'✓ Eingetragen':'✗ Fehler – CalDAV prüfen'}</span></div>`;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('success-screen').classList.add('active');
+  document.getElementById('bottom-nav').classList.remove('visible');
+  window.scrollTo(0,0);
+}
+
+// ── APPOINTMENTS ──
+async function searchAppts() {
+  const name = document.getElementById('appt-name').value.trim();
+  const res  = document.getElementById('appt-results');
+  if (!name) return;
+  res.innerHTML = '<div class="loading">Lädt …</div>';
+  try {
+    const rows = await apiFetch('GET', `/mybookings?name=${encodeURIComponent(name)}`);
+    if (!rows.length) { res.innerHTML = '<div class="empty"><div class="empty-emoji">🌸</div><div class="empty-title">Keine Termine</div><div class="empty-sub">Unter diesem Namen gibt es noch keine Buchungen.</div></div>'; return; }
+    res.innerHTML = rows.map(a => {
+      const d = new Date(a.date);
+      return `<div class="appt-card">
+        <div class="appt-date"><div class="appt-dm">${MONTHS[d.getMonth()]}</div><div class="appt-dd">${d.getDate()}</div></div>
+        <div class="appt-info"><div class="appt-svc">${a.service}</div><div class="appt-time">${a.time} Uhr · ${a.price}</div></div>
+        <div class="appt-badge">Bestätigt</div>
+      </div>`;
+    }).join('');
+  } catch(e) { res.innerHTML = `<div class="loading" style="color:#e08080">Fehler: ${e.message}</div>`; }
+}
+
+// ── ADMIN ──
+function checkPin() {
+  if (document.getElementById('admin-pin').value === ADMIN_PIN_ENV) {
+    sessionStorage.setItem('auth','1');
+    document.getElementById('admin-pin').value = '';
+    document.getElementById('admin-error').textContent = '';
+    goTo('admin'); loadAdmin();
+  } else {
+    document.getElementById('admin-error').textContent = 'Falscher PIN 🙅';
+    document.getElementById('admin-pin').value = '';
+  }
+}
+function adminLogout() { sessionStorage.removeItem('auth'); goTo('services'); }
+
+function switchTab(tab) {
+  ['schedule','services','bookings'].forEach((t,i) => {
+    document.querySelectorAll('.admin-tab')[i].classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  document.getElementById('admin-save-btn').style.display = tab==='bookings' ? 'none' : 'block';
+  if (tab === 'bookings') loadAdminBookings();
+}
+
+async function loadAdmin() {
+  if (!sessionStorage.getItem('auth')) { goTo('admin-login'); return; }
+  try {
+    adminSched = await apiFetch('GET', '/schedule');
+    adminSvcs  = await apiFetch('GET', '/services');
+    renderScheduleTab();
+    renderServicesTab();
+  } catch(e) { showToast('Ladefehler: ' + e.message); }
+}
+
+function renderScheduleTab() {
+  const el = document.getElementById('tab-schedule');
+  el.innerHTML = '<div class="admin-section"><div class="admin-section-title">Öffnungszeiten</div></div>';
+  const wrap = el.querySelector('.admin-section');
+  for (let dow = 0; dow <= 6; dow++) {
+    const day = adminSched[dow] || {open:false,slots:[]};
+    const card = document.createElement('div'); card.className = 'day-card';
+    card.innerHTML = `
+      <div class="day-header" onclick="toggleDay(${dow})">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span class="day-name">${DAYS_F[dow]}</span>
+          <span class="day-count" id="dc-${dow}">${day.open?day.slots.length+' Slots':'Geschlossen'}</span>
+        </div>
+        <div class="toggle ${day.open?'on':''}" id="dt-${dow}"></div>
+      </div>
+      <div class="day-slots ${day.open?'open':''}" id="ds-${dow}">
+        ${ALL_SLOTS.map(t=>`<div class="slot-btn ${day.slots.includes(t)?'on':''}" id="sb-${dow}-${t.replace(':','-')}" onclick="toggleSlot(${dow},'${t}')">${t}</div>`).join('')}
+      </div>`;
+    wrap.appendChild(card);
+  }
+}
+function toggleDay(dow) {
+  adminSched[dow].open = !adminSched[dow].open;
+  document.getElementById('dt-'+dow).classList.toggle('on', adminSched[dow].open);
+  document.getElementById('ds-'+dow).classList.toggle('open', adminSched[dow].open);
+  document.getElementById('dc-'+dow).textContent = adminSched[dow].open ? adminSched[dow].slots.length+' Slots' : 'Geschlossen';
+}
+function toggleSlot(dow, t) {
+  const slots = adminSched[dow].slots, i = slots.indexOf(t);
+  if (i===-1) { slots.push(t); slots.sort(); } else { slots.splice(i,1); }
+  document.getElementById('sb-'+dow+'-'+t.replace(':','-')).classList.toggle('on', slots.includes(t));
+  document.getElementById('dc-'+dow).textContent = adminSched[dow].open ? slots.length+' Slots' : 'Geschlossen';
+}
+
+function renderServicesTab() {
+  const el = document.getElementById('tab-services');
+  el.innerHTML = '<div class="admin-section"><div class="admin-section-title">Angebote</div></div>';
+  const wrap = el.querySelector('.admin-section');
+  adminSvcs.forEach((s,i) => {
+    const card = document.createElement('div'); card.className = 'svc-admin-card';
+    const isUrl = s.icon && (s.icon.startsWith('http')||s.icon.startsWith('/'));
+    card.innerHTML = `
+      <div class="svc-admin-header">
+        <div class="svc-preview" id="sp-${i}">${isUrl?`<img src="${s.icon}">`:(s.icon||'💅')}</div>
+        <span class="svc-admin-name">${s.name}</span>
+      </div>
+      <div class="svc-row">
+        <input class="svc-input" style="flex:0 0 95px" value="${s.icon||''}" placeholder="Emoji/URL" oninput="adminSvcs[${i}].icon=this.value;updateSvcPrev(${i},this.value)"/>
+        <input class="svc-input" value="${s.name}" placeholder="Name" oninput="adminSvcs[${i}].name=this.value"/>
+      </div>
+      <div class="svc-row"><input class="svc-input" value="${s.desc}" placeholder="Kurzbeschreibung" oninput="adminSvcs[${i}].desc=this.value"/></div>
+      <textarea class="svc-textarea" placeholder="Detailtext …" oninput="adminSvcs[${i}].details=this.value">${s.details||''}</textarea>
+      <div class="svc-row">
+        <input class="svc-input" value="${s.price}" placeholder="Preis" oninput="adminSvcs[${i}].price=this.value"/>
+        <input class="svc-input" value="${s.duration}" placeholder="Dauer" oninput="adminSvcs[${i}].duration=this.value"/>
+      </div>`;
+    wrap.appendChild(card);
+  });
+}
+function updateSvcPrev(i, val) {
+  const el = document.getElementById('sp-'+i); if (!el) return;
+  const isUrl = val.startsWith('http')||val.startsWith('/');
+  el.innerHTML = isUrl ? `<img src="${val}">` : (val||'💅');
+}
+
+async function loadAdminBookings() {
+  const el = document.getElementById('tab-bookings');
+  el.innerHTML = '<div class="admin-section"><div class="admin-section-title">Alle Buchungen</div><div id="bk-list"><div class="loading">Lädt …</div></div></div>';
+  try {
+    const rows = await apiFetch('GET', '/bookings', null, ADMIN_PIN_ENV);
+    const list = document.getElementById('bk-list');
+    if (!rows.length) { list.innerHTML = '<div class="loading">Keine Buchungen</div>'; return; }
+    list.innerHTML = rows.map(b => {
+      const d = new Date(b.date);
+      return `<div class="bk-card">
+        <div class="bk-date"><div class="bk-dm">${MONTHS[d.getMonth()]}</div><div class="bk-dd">${d.getDate()}</div></div>
+        <div class="bk-info"><div class="bk-name">${b.name}</div><div class="bk-svc">${b.service}</div><div class="bk-time">${b.time} Uhr · ${b.price}</div></div>
+        <button class="bk-del" onclick="delBooking(${b.id})">🗑</button>
+      </div>`;
+    }).join('');
+  } catch(e) { document.getElementById('bk-list').innerHTML = `<div class="loading" style="color:#e08080">${e.message}</div>`; }
+}
+
+async function delBooking(id) {
+  if (!confirm('Termin wirklich löschen?')) return;
+  await apiFetch('DELETE', `/bookings/${id}`, null, ADMIN_PIN_ENV);
+  showToast('✓ Gelöscht'); loadAdminBookings();
+}
+
+async function saveAll() {
+  try {
+    await apiFetch('PUT', '/schedule', adminSched, ADMIN_PIN_ENV);
+    await apiFetch('PUT', '/services',  adminSvcs,  ADMIN_PIN_ENV);
+    S.services = adminSvcs;
+    showToast('✓ Gespeichert!');
+  } catch(e) { showToast('Fehler: '+e.message); }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function startOver() {
+  S.sel=null; S.date=null; S.time=null;
+  document.getElementById('input-name').value = '';
+  document.getElementById('input-notes').value = '';
+  document.getElementById('success-screen').classList.remove('active');
+  document.getElementById('bottom-nav').classList.add('visible');
+  goTo('services');
+}
+
+// Init
+loadServices();
+</script>
+</body>
+</html>
