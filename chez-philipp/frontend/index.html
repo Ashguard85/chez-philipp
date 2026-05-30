@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,viewport-fit=cover"/>
   <title>Chez Philipp · Nail Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -204,6 +204,11 @@
     .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--deep);color:var(--cream);padding:12px 24px;border-radius:100px;font-size:13px;opacity:0;transition:all .3s;z-index:300;pointer-events:none;white-space:nowrap}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
     .loading{text-align:center;padding:40px;color:var(--mid);font-size:14px}
+
+    /* iOS zoom fix: Safari zooms auf inputs < 16px */
+    input, textarea, select { font-size: 16px !important; touch-action: manipulation; }
+    .svc-input { font-size: 16px !important; }
+    .admin-pin { font-size: 16px !important; }
   </style>
 </head>
 <body>
@@ -562,26 +567,34 @@ async function confirmBooking() {
   window.scrollTo(0,0);
 }
 
-// ── APPOINTMENTS (from API by name) ──
-async function renderAppointments() {
+// ── APPOINTMENTS (from API by name search) ──
+function renderAppointments() {
   const list = document.getElementById('appt-list');
-  const name = localStorage.getItem('cp_name');
-  if (!name) {
-    list.innerHTML = `<div class="empty-state">
-      <div class="empty-emoji">🌸</div>
-      <div class="empty-title">Deine Termine</div>
-      <div class="empty-sub">Nach dem ersten Buchen erscheinen<br>deine Termine hier automatisch.</div>
-    </div>`;
-    return;
-  }
-  list.innerHTML = '<div class="loading">Lädt …</div>';
+  list.innerHTML = `
+    <div style="padding:20px 0 8px">
+      <div class="field-group">
+        <label class="field-label">Dein Name</label>
+        <div style="display:flex;gap:8px">
+          <input class="field-input" id="appt-name-input" type="text" placeholder="z.B. Anna Müller" autocomplete="name" style="flex:1" onkeydown="if(event.key==='Enter')searchAppointments()"/>
+          <button class="btn btn-book" onclick="searchAppointments()" style="border-radius:13px;padding:14px 18px">Suchen</button>
+        </div>
+      </div>
+    </div>
+    <div id="appt-results"></div>`;
+}
+
+async function searchAppointments() {
+  const name = document.getElementById('appt-name-input').value.trim();
+  const results = document.getElementById('appt-results');
+  if (!name) return;
+  results.innerHTML = '<div class="loading">Lädt …</div>';
   try {
-    const rows = await api('GET',`/mybookings?name=${encodeURIComponent(name)}`);
+    const rows = await api('GET', `/mybookings?name=${encodeURIComponent(name)}`);
     if (!rows.length) {
-      list.innerHTML='<div class="empty-state"><div class="empty-emoji">🌸</div><div class="empty-title">Noch keine Termine</div><div class="empty-sub">Buch deinen ersten Termin<br>bei Chez Philipp!</div></div>';
+      results.innerHTML = '<div class="empty-state"><div class="empty-emoji">🌸</div><div class="empty-title">Keine Termine gefunden</div><div class="empty-sub">Unter diesem Namen gibt es<br>noch keine Buchungen.</div></div>';
       return;
     }
-    list.innerHTML = rows.map(a => {
+    results.innerHTML = rows.map(a => {
       const d = new Date(a.date);
       return `<div class="appt-card">
         <div class="appt-date-box"><div class="adm">${MONTHS[d.getMonth()]}</div><div class="add">${d.getDate()}</div></div>
@@ -589,17 +602,10 @@ async function renderAppointments() {
         <div class="appt-badge">Bestätigt</div>
       </div>`;
     }).join('');
-  } catch { list.innerHTML='<div class="loading">Fehler beim Laden</div>'; }
+  } catch { results.innerHTML = '<div class="loading">Fehler beim Laden</div>'; }
 }
 
-// save name after booking for appointments view
-const _origConfirm = confirmBooking;
-// store name in localStorage after booking
-async function confirmBooking() {
-  const name = document.getElementById('input-name').value.trim();
-  if (name) localStorage.setItem('cp_name', name);
-  await _origConfirm.call(this);
-}
+
 
 // ── ADMIN ──
 function checkPin() {
