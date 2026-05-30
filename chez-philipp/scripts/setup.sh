@@ -5,9 +5,8 @@ echo "=== Chez Philipp Setup ==="
 apk add --no-cache python3 py3-pip > /dev/null 2>&1
 pip install bcrypt --quiet --break-system-packages > /dev/null 2>&1
 
-# Create htpasswd user
+# Create user
 if [ ! -f /data/users ]; then
-  echo ">>> Creating user: ${CALDAV_USER}"
   python3 -c "
 import bcrypt, os
 u = os.environ['CALDAV_USER']
@@ -17,10 +16,10 @@ open('/data/users','w').write(f'{u}:{h}\n')
 print('User created:', u)
 "
 else
-  echo ">>> User already exists"
+  echo "User exists"
 fi
 
-# Radicale config
+# Radicale config WITH proper CORS headers
 mkdir -p /config
 cat > /config/radicale.conf << CONF
 [server]
@@ -48,12 +47,11 @@ Access-Control-Expose-Headers = ETag, DAV
 Access-Control-Allow-Credentials = true
 CONF
 
-# Create calendar collection
+# Calendar collection
 ROOT="/data/collections/collection-root"
 UDIR="$ROOT/${CALDAV_USER}"
 CDIR="$UDIR/calendar"
 mkdir -p "$CDIR"
-
 [ -f "$ROOT/.Radicale.props" ] || printf '{}' > "$ROOT/.Radicale.props"
 [ -f "$UDIR/.Radicale.props" ] || printf '{}' > "$UDIR/.Radicale.props"
 [ -f "$CDIR/.Radicale.props" ] || printf '{"D:displayname": "Chez Philipp", "tag": "VCALENDAR", "C:supported-calendar-component-set": "VEVENT"}' > "$CDIR/.Radicale.props"

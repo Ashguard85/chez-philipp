@@ -7,9 +7,10 @@ ARG ADMIN_PIN=1234
 COPY frontend/index.html /usr/share/nginx/html/index.html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Alles über nginx Port 3200 — kein CORS
+# API über nginx proxy (:3200/api)
+# CalDAV direkt auf :5232 — iOS kompatibel
 RUN printf "const API = window.location.protocol + '//' + window.location.hostname + ':3200/api';\n\
-const CALDAV_URL = window.location.protocol + '//' + window.location.hostname + ':3200/caldav/%s/calendar/';\n\
+const CALDAV_URL = window.location.protocol + '//' + window.location.hostname + ':5232/%s/calendar/';\n\
 const CALDAV_USER = '%s';\n\
 const CALDAV_PASS = '%s';\n\
 const ADMIN_PIN_ENV = '%s';\n" \

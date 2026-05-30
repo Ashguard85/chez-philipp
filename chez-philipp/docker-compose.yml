@@ -31,8 +31,8 @@ services:
   chez-philipp-cal:
     image: tomsquest/docker-radicale:latest
     container_name: chez-philipp-cal
-    expose:
-      - "5232"
+    ports:
+      - "5232:5232"
     volumes:
       - chez-philipp-cal-data:/data
       - chez-philipp-cal-config:/config
