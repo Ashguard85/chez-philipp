@@ -4,8 +4,8 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 2
-BACKUP_VERSION = 2
+SCHEMA_VERSION = 3
+BACKUP_VERSION = 3
 
 DEFAULT_SERVICES = [
     {
@@ -164,6 +164,58 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
         backup_database(db_path, backups_dir, backup_keep, "pre-migration")
 
     with connect(db_path) as conn:
+        # v3 widens booking states to support explicit appointment requests.
+        # Rebuild the two related tables once, after the automatic pre-migration backup.
+        if existing_version and existing_version < 3 and _table_exists(conn, "bookings"):
+            conn.execute("PRAGMA foreign_keys=OFF")
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute("ALTER TABLE bookings RENAME TO bookings_v2")
+                if _table_exists(conn, "notification_outbox"):
+                    conn.execute("ALTER TABLE notification_outbox RENAME TO notification_outbox_v2")
+                conn.execute(
+                    """CREATE TABLE bookings (
+                        id TEXT PRIMARY KEY, public_code TEXT NOT NULL UNIQUE, customer_name TEXT NOT NULL,
+                        customer_email TEXT NOT NULL DEFAULT '', customer_phone TEXT NOT NULL DEFAULT '',
+                        service_id TEXT NOT NULL, service_name TEXT NOT NULL, price_label TEXT NOT NULL DEFAULT '',
+                        nail_color_id TEXT NOT NULL DEFAULT '', nail_color_name TEXT NOT NULL DEFAULT '', nail_color_hex TEXT NOT NULL DEFAULT '',
+                        date TEXT NOT NULL, start_time TEXT NOT NULL, end_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '',
+                        status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed','requested','cancelled','rejected')),
+                        created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                        FOREIGN KEY(service_id) REFERENCES services(id) ON UPDATE CASCADE
+                    )"""
+                )
+                color_id_expr = "nail_color_id" if _column_exists(conn, "bookings_v2", "nail_color_id") else "''"
+                color_name_expr = "nail_color_name" if _column_exists(conn, "bookings_v2", "nail_color_name") else "''"
+                color_hex_expr = "nail_color_hex" if _column_exists(conn, "bookings_v2", "nail_color_hex") else "''"
+                conn.execute(
+                    f"""INSERT INTO bookings(
+                        id,public_code,customer_name,customer_email,customer_phone,service_id,service_name,price_label,
+                        nail_color_id,nail_color_name,nail_color_hex,date,start_time,end_time,notes,status,created_at,updated_at
+                    )
+                    SELECT id,public_code,customer_name,customer_email,customer_phone,service_id,service_name,price_label,
+                           {color_id_expr},{color_name_expr},{color_hex_expr},date,start_time,end_time,notes,status,created_at,updated_at
+                    FROM bookings_v2"""
+                )
+                conn.execute(
+                    """CREATE TABLE notification_outbox (
+                        id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, notification_type TEXT NOT NULL DEFAULT 'new_booking',
+                        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','sent','failed')), attempts INTEGER NOT NULL DEFAULT 0,
+                        next_attempt_at TEXT NOT NULL, last_error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, sent_at TEXT,
+                        UNIQUE(booking_id, notification_type), FOREIGN KEY(booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+                    )"""
+                )
+                if _table_exists(conn, "notification_outbox_v2"):
+                    conn.execute("INSERT INTO notification_outbox SELECT * FROM notification_outbox_v2")
+                    conn.execute("DROP TABLE notification_outbox_v2")
+                conn.execute("DROP TABLE bookings_v2")
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+            finally:
+                conn.execute("PRAGMA foreign_keys=ON")
+
         conn.executescript(
             """
             BEGIN;
@@ -201,6 +253,15 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
                 end_time TEXT NOT NULL,
                 slot_interval_min INTEGER NOT NULL DEFAULT 30 CHECK(slot_interval_min BETWEEN 5 AND 240)
             );
+            CREATE TABLE IF NOT EXISTS availability_overrides (
+                id TEXT PRIMARY KEY,
+                date TEXT NOT NULL,
+                kind TEXT NOT NULL DEFAULT 'available' CHECK(kind IN ('available','closed')),
+                start_time TEXT NOT NULL DEFAULT '',
+                end_time TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS bookings (
                 id TEXT PRIMARY KEY,
                 public_code TEXT NOT NULL UNIQUE,
@@ -217,7 +278,7 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
                 start_time TEXT NOT NULL,
                 end_time TEXT NOT NULL,
                 notes TEXT NOT NULL DEFAULT '',
-                status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed','cancelled')),
+                status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed','requested','cancelled','rejected')),
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY(service_id) REFERENCES services(id) ON UPDATE CASCADE
@@ -239,6 +300,7 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
             CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(date, start_time);
             CREATE INDEX IF NOT EXISTS idx_bookings_code ON bookings(public_code);
             CREATE INDEX IF NOT EXISTS idx_outbox_due ON notification_outbox(status, next_attempt_at);
+            CREATE INDEX IF NOT EXISTS idx_availability_overrides_date ON availability_overrides(date, kind, start_time);
             COMMIT;
             """
         )
@@ -296,6 +358,7 @@ def export_payload(conn: sqlite3.Connection) -> dict:
             "services": rows(conn, "SELECT * FROM services ORDER BY sort_order, name"),
             "nail_colors": rows(conn, "SELECT * FROM nail_colors ORDER BY sort_order, name"),
             "opening_hours": rows(conn, "SELECT * FROM opening_hours ORDER BY weekday"),
+            "availability_overrides": rows(conn, "SELECT * FROM availability_overrides ORDER BY date, start_time"),
             "bookings": rows(conn, "SELECT * FROM bookings ORDER BY date, start_time"),
             "meta": {r["key"]: r["value"] for r in rows(conn, "SELECT key,value FROM meta") if r["key"] != "schema_version"},
         },
@@ -306,7 +369,7 @@ def validate_backup(payload: dict) -> dict:
     if not isinstance(payload, dict) or payload.get("format") != "chez-philipp-backup":
         raise ValueError("Unbekanntes Backup-Format")
     version = payload.get("version")
-    if version not in {1, 2}:
+    if version not in {1, 2, 3}:
         raise ValueError("Nicht unterstützte Backup-Version")
     data = payload.get("data")
     if not isinstance(data, dict):
@@ -314,13 +377,15 @@ def validate_backup(payload: dict) -> dict:
     services = data.get("services", [])
     colors = data.get("nail_colors", []) if version >= 2 else []
     hours = data.get("opening_hours", [])
+    overrides = data.get("availability_overrides", []) if version >= 3 else []
     bookings = data.get("bookings", [])
-    if not all(isinstance(x, list) for x in (services, colors, hours, bookings)):
+    if not all(isinstance(x, list) for x in (services, colors, hours, overrides, bookings)):
         raise ValueError("Backup-Daten sind beschädigt")
     return {
         "version": version,
         "services": len(services),
         "nail_colors": len(colors),
         "opening_hours": len(hours),
+        "availability_overrides": len(overrides),
         "bookings": len(bookings),
     }

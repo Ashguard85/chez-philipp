@@ -56,6 +56,20 @@
         <section class="booking-stage hidden" id="booking-stage" aria-labelledby="booking-title">
           <div class="selected-service" id="selected-service"></div>
 
+          <div class="content-section compact-section" id="booking-method-section">
+            <div class="section-heading slim-heading">
+              <div><span class="eyebrow">02 · Terminart</span><h2>Wie möchtest du planen?</h2></div>
+            </div>
+            <div class="booking-method-grid">
+              <button class="booking-method" id="choose-book-slot" type="button">
+                <strong>Termin buchen</strong><span>Einen von Philipps freigegebenen Terminen direkt reservieren.</span>
+              </button>
+              <button class="booking-method" id="choose-request-slot" type="button">
+                <strong>Freien Termin anfragen</strong><span>Datum und Uhrzeit selbst vorschlagen. Noch nicht verbindlich.</span>
+              </button>
+            </div>
+          </div>
+
           <div class="content-section compact-section hidden" id="color-section">
             <div class="section-heading slim-heading">
               <div><span class="eyebrow">02 · Farbe</span><h2>Welche Farbe darf es sein?</h2></div>
@@ -64,33 +78,40 @@
             <div class="color-grid" id="color-grid" aria-label="Nagelfarbe auswählen"></div>
           </div>
 
-          <div class="content-section compact-section">
-            <div class="section-heading">
-              <div><span class="eyebrow" id="date-step-label">02 · Datum</span><h2 id="booking-title">Wann passt es dir?</h2></div>
+          <div id="book-flow" class="hidden">
+            <div class="content-section compact-section">
+              <div class="section-heading">
+                <div><span class="eyebrow" id="date-step-label">03 · Datum</span><h2 id="booking-title">Wann passt es dir?</h2></div>
+              </div>
+              <div class="date-strip" id="date-strip" aria-label="Datum auswählen"></div>
             </div>
-            <div class="date-strip" id="date-strip" aria-label="Datum auswählen"></div>
+
+            <div class="content-section compact-section">
+              <div class="section-heading slim-heading">
+                <div><span class="eyebrow" id="time-step-label">04 · Uhrzeit</span><h2>Deine freien Zeiten</h2></div>
+              </div>
+              <div class="slot-grid" id="slot-grid"><p class="empty-state">Bitte zuerst ein Datum wählen.</p></div>
+            </div>
           </div>
 
-          <div class="content-section compact-section">
+          <div id="request-flow" class="content-section compact-section hidden">
             <div class="section-heading slim-heading">
-              <div><span class="eyebrow" id="time-step-label">03 · Uhrzeit</span><h2>Freie Zeiten</h2></div>
+              <div><span class="eyebrow" id="request-step-label">03 · Wunschzeit</span><h2>Freien Termin anfragen</h2></div>
             </div>
-            <div class="slot-grid" id="slot-grid"><p class="empty-state">Bitte zuerst ein Datum wählen.</p></div>
+            <p class="color-intro">Wähle deinen Wunsch unabhängig von Philipps freigegebenen Zeiten. Die Anfrage ist erst nach Bestätigung verbindlich.</p>
+            <div class="field-grid request-picker-grid">
+              <label class="field"><span>Wunschdatum</span><span class="ios-input-shell"><input id="request-date" type="date"></span></label>
+              <label class="field"><span>Wunschzeit</span><span class="ios-input-shell"><input id="request-time" type="time" step="900"></span></label>
+            </div>
           </div>
 
-          <form class="booking-form content-section" id="booking-form" novalidate>
+          <form class="booking-form content-section hidden" id="booking-form" novalidate>
             <div class="section-heading slim-heading">
-              <div><span class="eyebrow" id="details-step-label">04 · Deine Angaben</span><h2>Fast geschafft.</h2></div>
-            </div>
-            <div class="field-grid">
-              <label class="field field-full"><span>Name *</span><input id="customer-name" name="customer_name" autocomplete="name" maxlength="120" required placeholder="Vor- und Nachname"></label>
-              <label class="field"><span>E-Mail</span><input id="customer-email" name="customer_email" type="email" autocomplete="email" maxlength="180" placeholder="name@beispiel.ch"></label>
-              <label class="field"><span>Telefon</span><input id="customer-phone" name="customer_phone" type="tel" autocomplete="tel" maxlength="80" placeholder="+41 …"></label>
-              <label class="field field-full"><span>Wünsche oder Notiz</span><textarea id="customer-notes" name="notes" maxlength="1500" rows="3" placeholder="Optional"></textarea></label>
+              <div><span class="eyebrow" id="confirm-step-label">04 · Bestätigen</span><h2>Passt alles?</h2></div>
             </div>
             <div class="booking-summary" id="booking-summary"></div>
             <button class="primary-button" id="confirm-booking" type="submit" disabled>Termin verbindlich reservieren</button>
-            <p class="form-hint" id="booking-hint">Deine Buchung wird erst nach dem Tippen auf „Termin verbindlich reservieren“ gespeichert.</p>
+            <p class="form-hint" id="booking-hint">Der Termin wird erst nach dem Tippen auf „Termin verbindlich reservieren“ gespeichert.</p>
           </form>
         </section>
       </section>
@@ -143,7 +164,7 @@
           </section>
 
           <section class="settings-card">
-            <div class="settings-card-head"><div><small>PWA</small><h3>Version & Update</h3></div><span class="version-chip" id="version-chip">v2.0.0</span></div>
+            <div class="settings-card-head"><div><small>PWA</small><h3>Version & Update</h3></div><span class="version-chip" id="version-chip">v4.0.0</span></div>
             <p id="update-status">Die App prüft bei Gelegenheit auf neue Versionen. Updates werden vorbereitet, aber nicht mitten in einer laufenden Eingabe erzwungen.</p>
             <div class="button-row">
               <button class="secondary-button" id="check-update" type="button">Nach Update suchen</button>
@@ -153,7 +174,7 @@
 
           <section class="settings-card">
             <div class="settings-card-head"><div><small>Verwaltung</small><h3>Studio-Administration</h3></div></div>
-            <p>Leistungen, Nagelfarben, Öffnungszeiten, Buchungen und Server-Backups verwalten.</p>
+            <p>Leistungen, Nagelfarben, deine Verfügbarkeit, Terminanfragen, Buchungen und Server-Backups verwalten.</p>
             <button class="secondary-button" id="open-admin" type="button">Admin-Bereich öffnen</button>
           </section>
 
@@ -181,7 +202,7 @@
         </div>
         <div class="admin-panel hidden" id="admin-panel">
           <div class="segmented" role="tablist">
-            <button class="segment active" data-admin-tab="hours" type="button">Zeiten</button>
+            <button class="segment active" data-admin-tab="hours" type="button">Freizeit</button>
             <button class="segment" data-admin-tab="services" type="button">Leistungen</button>
             <button class="segment" data-admin-tab="colors" type="button">Farben</button>
             <button class="segment" data-admin-tab="bookings" type="button">Termine</button>
@@ -229,8 +250,8 @@
     <div class="sheet-card success-card">
       <button class="sheet-close" id="success-close" type="button" aria-label="Schließen">×</button>
       <div class="success-seal">✓</div>
-      <span class="eyebrow">Reservierung bestätigt</span>
-      <h2>Dein Termin steht.</h2>
+      <span class="eyebrow" id="success-eyebrow">Reservierung bestätigt</span>
+      <h2 id="success-title">Dein Termin steht.</h2>
       <div class="success-details" id="success-details"></div>
       <div class="button-stack">
         <button class="primary-button" id="success-appointments" type="button">Meine Termine ansehen</button>

@@ -1,11 +1,11 @@
 'use strict';
 
-const CFG = window.APP_CONFIG || { deployment: 'pages', appName: 'Chez Philipp', version: '2.0.0', defaultApiBase: '', dockerFallbackUrl: '' };
-const APP_VERSION = CFG.version || '2.0.0';
+const CFG = window.APP_CONFIG || { deployment: 'pages', appName: 'Chez Philipp', version: '4.0.0', defaultApiBase: '', dockerFallbackUrl: '' };
+const APP_VERSION = CFG.version || '4.0.0';
 const MODE_KEY = 'chez-philipp-mode';
 const VIEW_KEY = 'chez-philipp-view';
 const DB_NAME = 'chez-philipp-pwa';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const WEEKDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 const MONTHS = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 
@@ -47,8 +47,10 @@ const state = {
   colors: [],
   selectedService: null,
   selectedColor: null,
+  bookingIntent: null,
   selectedDate: null,
   selectedTime: null,
+  availabilityDays: {},
   latestBooking: null,
   serverConfig: null,
   adminState: null,
@@ -112,6 +114,7 @@ function openDb() {
       if (!db.objectStoreNames.contains('services')) db.createObjectStore('services', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('colors')) db.createObjectStore('colors', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('hours')) db.createObjectStore('hours', { keyPath: 'weekday' });
+      if (!db.objectStoreNames.contains('overrides')) db.createObjectStore('overrides', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('bookings')) {
         const store = db.createObjectStore('bookings', { keyPath: 'id' });
         store.createIndex('public_code', 'public_code', { unique: true });
@@ -207,7 +210,7 @@ async function ensureLocalSeed() {
     await idbBulkPut('colors', DEFAULT_NAIL_COLORS.map(x => ({...x, created_at: stamp, updated_at: stamp})));
     await idbBulkPut('hours', DEFAULT_HOURS);
     await idbPut('meta', {key:'seeded', value:true});
-    await idbPut('meta', {key:'schema_version', value:2});
+    await idbPut('meta', {key:'schema_version', value:3});
     return;
   }
   if (Number(versionRow?.value || 1) < 2) {
@@ -221,6 +224,9 @@ async function ensureLocalSeed() {
       await idbBulkPut('colors', DEFAULT_NAIL_COLORS.map(x => ({...x, created_at: stamp, updated_at: stamp})));
     }
     await idbPut('meta', {key:'schema_version', value:2});
+  }
+  if (Number((await idbGet('meta', 'schema_version'))?.value || 1) < 3) {
+    await idbPut('meta', {key:'schema_version', value:3});
   }
 }
 
@@ -260,24 +266,45 @@ class LocalProvider {
   async getAvailability(date, serviceId) {
     const service = await idbGet('services', serviceId);
     if (!service || !Number(service.active)) return [];
-    const hours = await idbGet('hours', weekdayMondayZero(date));
-    if (!hours || !Number(hours.enabled)) return [];
     const day = parseLocalDate(date);
     const today = new Date();
     if (day < new Date(today.getFullYear(), today.getMonth(), today.getDate())) return [];
+    const hours = await idbGet('hours', weekdayMondayZero(date));
+    const overrides = (await idbGetAll('overrides')).filter(x => x.date === date);
+    let windows = [];
+    let step = Number(hours?.slot_interval_min || 30);
+    if (overrides.length) {
+      if (overrides.some(x => x.kind === 'closed')) return [];
+      windows = overrides.filter(x => x.kind === 'available').map(x => [minutes(x.start_time), minutes(x.end_time)]);
+    } else if (hours && Number(hours.enabled)) {
+      windows = [[minutes(hours.start_time), minutes(hours.end_time)]];
+    } else {
+      return [];
+    }
     const bookings = (await idbGetAll('bookings')).filter(b => b.date === date && b.status === 'confirmed');
     const busy = bookings.map(b => [minutes(b.start_time), minutes(b.end_time)]);
     const result = [];
-    let cursor = minutes(hours.start_time);
-    const close = minutes(hours.end_time);
     const duration = Number(service.duration_min);
-    const step = Number(hours.slot_interval_min || 30);
-    while (cursor + duration <= close) {
-      const finish = cursor + duration;
-      const overlap = busy.some(([s,e]) => cursor < e && finish > s);
-      const pastToday = date === localDateString(today) && cursor <= today.getHours()*60 + today.getMinutes();
-      if (!overlap && !pastToday) result.push(timeFromMinutes(cursor));
-      cursor += step;
+    for (const [open, close] of windows) {
+      let cursor = open;
+      while (cursor + duration <= close) {
+        const finish = cursor + duration;
+        const overlap = busy.some(([s,e]) => cursor < e && finish > s);
+        const pastToday = date === localDateString(today) && cursor <= today.getHours()*60 + today.getMinutes();
+        if (!overlap && !pastToday) result.push(timeFromMinutes(cursor));
+        cursor += Math.max(5, step);
+      }
+    }
+    return [...new Set(result)].sort();
+  }
+  async getAvailabilityDays(serviceId, days=28) {
+    const result=[];
+    const today=new Date();
+    for (let i=0;i<days;i++) {
+      const d=new Date(today.getFullYear(),today.getMonth(),today.getDate()+i,12);
+      const value=localDateString(d);
+      const slots=await this.getAvailability(value,serviceId);
+      result.push({date:value,count:slots.length});
     }
     return result;
   }
@@ -290,16 +317,26 @@ class LocalProvider {
       color = await idbGet('colors', data.nail_color_id);
       if (!color || !Number(color.active)) throw new Error('Farbe nicht gefunden.');
     }
-    const free = await this.getAvailability(data.date, data.service_id);
-    if (!free.includes(data.start_time)) throw new Error('Dieser Termin ist nicht mehr verfügbar.');
+    const mode = data.booking_mode === 'requested' ? 'requested' : 'confirmed';
+    const start = minutes(data.start_time);
+    const end = start + Number(service.duration_min);
+    const today = new Date();
+    const selectedDay = parseLocalDate(data.date);
+    if (selectedDay < new Date(today.getFullYear(), today.getMonth(), today.getDate()) || (data.date === localDateString(today) && start <= today.getHours()*60 + today.getMinutes())) throw new Error('Der gewünschte Termin liegt in der Vergangenheit.');
+    const confirmed = (await idbGetAll('bookings')).filter(b => b.date === data.date && b.status === 'confirmed');
+    if (confirmed.some(b => start < minutes(b.end_time) && end > minutes(b.start_time))) throw new Error('Zu dieser Zeit besteht bereits ein bestätigter Termin.');
+    if (mode === 'confirmed') {
+      const free = await this.getAvailability(data.date, data.service_id);
+      if (!free.includes(data.start_time)) throw new Error('Dieser Termin ist nicht mehr verfügbar.');
+    }
     const code = `CP-${Math.random().toString(36).slice(2,10).toUpperCase().replace(/[IO01]/g,'X').padEnd(8,'7').slice(0,8)}`;
     const stamp = nowIso();
     const row = {
-      id: uid(), public_code: code, customer_name: data.customer_name, customer_email: data.customer_email || '', customer_phone: data.customer_phone || '',
+      id: uid(), public_code: code, customer_name: 'Meine Frau', customer_email: '', customer_phone: '',
       service_id: service.id, service_name: service.name, price_label: service.price_label || '',
       nail_color_id: color?.id || '', nail_color_name: color?.name || '', nail_color_hex: color?.hex_color || '',
       date: data.date, start_time: data.start_time, end_time: endTime(data.start_time, service.duration_min), notes: data.notes || '',
-      status:'confirmed', created_at:stamp, updated_at:stamp
+      status:mode, created_at:stamp, updated_at:stamp
     };
     await idbPut('bookings', row);
     return row;
@@ -320,6 +357,7 @@ class LocalProvider {
       services:(await idbGetAll('services')).sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)),
       nail_colors:(await idbGetAll('colors')).sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)),
       opening_hours:(await idbGetAll('hours')).sort((a,b)=>a.weekday-b.weekday),
+      availability_overrides:(await idbGetAll('overrides')).sort((a,b)=>`${a.date}${a.start_time}`.localeCompare(`${b.date}${b.start_time}`)),
       bookings:await this.getMyBookings(), notification_enabled:false
     };
   }
@@ -332,13 +370,16 @@ class LocalProvider {
     await idbBulkPut('colors', items.map((item,index) => ({...item,id:item.id || uid(),hex_color:item.hex_color || '#B9B2AA',active:item.active?1:0,sort_order:Number(item.sort_order ?? index*10),created_at:item.created_at || stamp,updated_at:stamp})));
   }
   async saveOpeningHours(items) { await idbReplaceStore('hours', items.map(x => ({...x,enabled:x.enabled?1:0,slot_interval_min:Number(x.slot_interval_min)||30}))); }
+  async saveAvailabilityOverrides(items) { const stamp=nowIso(); await idbReplaceStore('overrides', items.map(x=>({...x,id:x.id||uid(),created_at:x.created_at||stamp,updated_at:stamp}))); }
+  async confirmBooking(id) { const row=await idbGet('bookings',id); if(!row||row.status!=='requested') throw new Error('Terminanfrage nicht gefunden.'); const busy=(await idbGetAll('bookings')).filter(b=>b.id!==id&&b.date===row.date&&b.status==='confirmed'); if(busy.some(b=>minutes(row.start_time)<minutes(b.end_time)&&minutes(row.end_time)>minutes(b.start_time))) throw new Error('Der Zeitraum ist inzwischen belegt.'); await idbPut('bookings',{...row,status:'confirmed',updated_at:nowIso()}); }
+  async rejectBooking(id) { const row=await idbGet('bookings',id); if(row&&row.status==='requested') await idbPut('bookings',{...row,status:'rejected',updated_at:nowIso()}); }
   async cancelBooking(id) {
     const row = await idbGet('bookings', id);
     if (!row) return;
     await idbPut('bookings', {...row,status:'cancelled',updated_at:nowIso()});
   }
   async exportBackup() {
-    return {format:'chez-philipp-backup',version:2,exported_at:nowIso(),data:{services:await idbGetAll('services'),nail_colors:await idbGetAll('colors'),opening_hours:await idbGetAll('hours'),bookings:await idbGetAll('bookings'),meta:{}}};
+    return {format:'chez-philipp-backup',version:3,exported_at:nowIso(),data:{services:await idbGetAll('services'),nail_colors:await idbGetAll('colors'),opening_hours:await idbGetAll('hours'),availability_overrides:await idbGetAll('overrides'),bookings:await idbGetAll('bookings'),meta:{}}};
   }
   async previewBackup(payload) { return validateBackupClient(payload); }
   async applyBackup(payload, strategy='replace') {
@@ -349,12 +390,14 @@ class LocalProvider {
     if (strategy === 'replace') {
       await idbReplaceStore('bookings', payload.data.bookings || []);
       await idbReplaceStore('hours', payload.data.opening_hours || []);
+      await idbReplaceStore('overrides', Number(payload.version)>=3 ? (payload.data.availability_overrides || []) : []);
       await idbReplaceStore('services', normalizedServices);
       if (Number(payload.version) >= 2) await idbReplaceStore('colors', payload.data.nail_colors || []);
     } else {
       await idbBulkPut('services', normalizedServices);
       if (Number(payload.version) >= 2) await idbBulkPut('colors', payload.data.nail_colors || []);
       await idbBulkPut('hours', payload.data.opening_hours || []);
+      if (Number(payload.version)>=3) await idbBulkPut('overrides', payload.data.availability_overrides || []);
       await idbBulkPut('bookings', payload.data.bookings || []);
     }
     return counts;
@@ -412,6 +455,7 @@ class ServerProvider {
   async getServices() { return this.request('/services'); }
   async getColors() { return this.request('/nail-colors'); }
   async getAvailability(date, serviceId) { return (await this.request(`/availability?date=${encodeURIComponent(date)}&service_id=${encodeURIComponent(serviceId)}`)).slots || []; }
+  async getAvailabilityDays(serviceId,days=28) { return (await this.request(`/availability-days?service_id=${encodeURIComponent(serviceId)}&days=${Number(days)||28}`)).days || []; }
   async createBooking(data) {
     const row = await this.request('/bookings',{method:'POST',body:data});
     const codes = await getDeviceSetting('bookingCodes', []);
@@ -431,6 +475,9 @@ class ServerProvider {
   async saveServices(items) { return this.request('/admin/services',{method:'PUT',body:items,admin:true}); }
   async saveNailColors(items) { return this.request('/admin/nail-colors',{method:'PUT',body:items,admin:true}); }
   async saveOpeningHours(items) { return this.request('/admin/opening-hours',{method:'PUT',body:items,admin:true}); }
+  async saveAvailabilityOverrides(items) { return this.request('/admin/availability-overrides',{method:'PUT',body:items,admin:true}); }
+  async confirmBooking(id) { return this.request(`/admin/bookings/${encodeURIComponent(id)}/confirm`,{method:'POST',admin:true}); }
+  async rejectBooking(id) { return this.request(`/admin/bookings/${encodeURIComponent(id)}/reject`,{method:'POST',admin:true}); }
   async cancelBooking(id) { return this.request(`/admin/bookings/${encodeURIComponent(id)}`,{method:'DELETE',admin:true}); }
   async exportBackup() { return this.request('/admin/export',{admin:true}); }
   async previewBackup(payload) { return this.request('/admin/import/preview',{method:'POST',body:payload,admin:true}); }
@@ -441,10 +488,11 @@ class ServerProvider {
 
 function validateBackupClient(payload) {
   if (!payload || payload.format !== 'chez-philipp-backup') throw new Error('Unbekanntes Backup-Format');
-  if (![1,2].includes(Number(payload.version))) throw new Error('Nicht unterstützte Backup-Version');
+  if (![1,2,3].includes(Number(payload.version))) throw new Error('Nicht unterstützte Backup-Version');
   if (!payload.data || !Array.isArray(payload.data.services) || !Array.isArray(payload.data.opening_hours) || !Array.isArray(payload.data.bookings)) throw new Error('Backup-Daten sind unvollständig');
   if (Number(payload.version) >= 2 && !Array.isArray(payload.data.nail_colors)) throw new Error('Backup enthält keine gültige Farbliste');
-  return {version:Number(payload.version),services:payload.data.services.length,nail_colors:(payload.data.nail_colors || []).length,opening_hours:payload.data.opening_hours.length,bookings:payload.data.bookings.length};
+  if (Number(payload.version) >= 3 && !Array.isArray(payload.data.availability_overrides)) throw new Error('Backup enthält keine gültigen Verfügbarkeitsausnahmen');
+  return {version:Number(payload.version),services:payload.data.services.length,nail_colors:(payload.data.nail_colors || []).length,opening_hours:payload.data.opening_hours.length,availability_overrides:(payload.data.availability_overrides || []).length,bookings:payload.data.bookings.length};
 }
 
 async function configureProvider() {
@@ -536,10 +584,13 @@ async function loadServices() {
 function selectService(id) {
   state.selectedService = state.services.find(x => x.id === id) || null;
   state.selectedColor = null;
+  state.bookingIntent = null;
   state.selectedDate = null;
   state.selectedTime = null;
+  state.availabilityDays = {};
   renderServices();
   renderSelectedService();
+  renderBookingIntent();
   renderColorSelection();
   updateStepLabels();
   renderDates();
@@ -557,21 +608,55 @@ function renderSelectedService() {
     <p class="selected-description">${esc(s.description || '')}</p>`;
 }
 
+function renderBookingIntent() {
+  const direct = $('choose-book-slot');
+  const request = $('choose-request-slot');
+  direct.classList.toggle('selected', state.bookingIntent === 'book');
+  request.classList.toggle('selected', state.bookingIntent === 'request');
+  $('book-flow').classList.toggle('hidden', state.bookingIntent !== 'book');
+  $('request-flow').classList.toggle('hidden', state.bookingIntent !== 'request');
+  $('booking-form').classList.toggle('hidden', !state.bookingIntent);
+  if (!state.bookingIntent) {
+    state.selectedDate = null;
+    state.selectedTime = null;
+  }
+  renderColorSelection();
+  updateStepLabels();
+  updateBookingSummary();
+}
+
+function chooseBookingIntent(intent) {
+  state.bookingIntent = intent;
+  state.selectedDate = null;
+  state.selectedTime = null;
+  if (intent === 'request') {
+    const today = new Date();
+    const dateInput = $('request-date');
+    dateInput.min = localDateString(today);
+    dateInput.value = '';
+    $('request-time').value = '';
+  }
+  renderBookingIntent();
+  if (intent === 'book') renderDates();
+}
+
 function updateStepLabels() {
   const hasColor = Boolean(state.selectedService && Number(state.selectedService.color_enabled));
-  if ($('date-step-label')) $('date-step-label').textContent = `${hasColor ? '03' : '02'} · Datum`;
-  if ($('time-step-label')) $('time-step-label').textContent = `${hasColor ? '04' : '03'} · Uhrzeit`;
-  if ($('details-step-label')) $('details-step-label').textContent = `${hasColor ? '05' : '04'} · Deine Angaben`;
+  const offset = hasColor ? 1 : 0;
+  if ($('date-step-label')) $('date-step-label').textContent = `${3 + offset} · Datum`;
+  if ($('time-step-label')) $('time-step-label').textContent = `${4 + offset} · Uhrzeit`;
+  if ($('request-step-label')) $('request-step-label').textContent = `${3 + offset} · Wunschzeit`;
+  if ($('confirm-step-label')) $('confirm-step-label').textContent = `${state.bookingIntent === 'book' ? 5 + offset : 4 + offset} · Bestätigen`;
 }
 
 function renderColorSelection() {
   const section = $('color-section');
   const grid = $('color-grid');
-  const enabled = Boolean(state.selectedService && Number(state.selectedService.color_enabled));
+  const enabled = Boolean(state.bookingIntent && state.selectedService && Number(state.selectedService.color_enabled));
   section.classList.toggle('hidden', !enabled);
   if (!enabled) {
-    state.selectedColor = null;
-    grid.innerHTML = '';
+    if (state.selectedService && !Number(state.selectedService.color_enabled)) state.selectedColor = null;
+    if (!state.bookingIntent) grid.innerHTML = '';
     return;
   }
   if (!state.colors.length) {
@@ -591,32 +676,48 @@ function renderColorSelection() {
   }));
 }
 
-function renderDates() {
+async function renderDates() {
   const strip = $('date-strip');
   strip.innerHTML = '';
   const today = new Date();
-  for (let i=0;i<21;i++) {
+  const dates = [];
+  for (let i=0;i<28;i++) {
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate()+i, 12);
     const value = localDateString(date);
+    dates.push({date,value});
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `date-button ${state.selectedDate===value?'selected':''}`;
     button.dataset.date = value;
     button.innerHTML = `<small>${['So','Mo','Di','Mi','Do','Fr','Sa'][date.getDay()]}</small><strong>${date.getDate()}</strong><small>${MONTHS[date.getMonth()]}</small>`;
+    button.disabled = true;
     button.addEventListener('click', async () => {
       state.selectedDate = value;
       state.selectedTime = null;
-      renderDates();
+      await renderDates();
       await renderSlots();
       updateBookingSummary();
     });
     strip.appendChild(button);
   }
+  if (state.bookingIntent !== 'book' || !state.selectedService) return;
+  try {
+    const availabilityDays = await state.provider.getAvailabilityDays(state.selectedService.id, 28);
+    state.availabilityDays = Object.fromEntries(availabilityDays.map(x => [x.date, Number(x.count)||0]));
+    qsa('[data-date]',strip).forEach(button => {
+      const count = state.availabilityDays[button.dataset.date] || 0;
+      button.disabled = count === 0;
+      button.classList.toggle('unavailable', count === 0);
+      button.title = count ? `${count} freie Startzeit${count===1?'':'en'}` : 'Keine freie Zeit';
+    });
+  } catch (e) {
+    qsa('[data-date]',strip).forEach(button => { button.disabled=false; button.classList.remove('unavailable'); });
+  }
 }
 
 async function renderSlots() {
   const grid = $('slot-grid');
-  if (!state.selectedService || !state.selectedDate) {
+  if (state.bookingIntent !== 'book' || !state.selectedService || !state.selectedDate) {
     grid.innerHTML = '<p class="empty-state">Bitte zuerst ein Datum wählen.</p>';
     return;
   }
@@ -624,7 +725,7 @@ async function renderSlots() {
   try {
     const slots = await state.provider.getAvailability(state.selectedDate, state.selectedService.id);
     if (!slots.length) {
-      grid.innerHTML = '<p class="empty-state">An diesem Tag ist aktuell kein passender Termin frei.</p>';
+      grid.innerHTML = '<p class="empty-state">An diesem Tag ist aktuell kein passender Termin freigegeben. Du kannst stattdessen einen freien Termin anfragen.</p>';
       return;
     }
     grid.innerHTML = slots.map(slot => `<button class="slot-button ${state.selectedTime===slot?'selected':''}" type="button" data-slot="${esc(slot)}">${esc(slot)}</button>`).join('');
@@ -643,41 +744,52 @@ function formatDate(value, withWeekday=true) {
   return new Intl.DateTimeFormat('de-CH',{weekday:withWeekday?'long':undefined,day:'2-digit',month:'long',year:'numeric'}).format(d);
 }
 
+function syncRequestInputs() {
+  if (state.bookingIntent !== 'request') return;
+  state.selectedDate = $('request-date').value || null;
+  state.selectedTime = $('request-time').value || null;
+  state.dirty = Boolean(state.selectedDate || state.selectedTime);
+  updateBookingSummary();
+}
+
 function updateBookingSummary() {
   const needsColor = Boolean(state.selectedService && Number(state.selectedService.color_enabled));
-  const ready = Boolean(state.selectedService && state.selectedDate && state.selectedTime && (!needsColor || state.selectedColor));
+  const ready = Boolean(state.bookingIntent && state.selectedService && state.selectedDate && state.selectedTime && (!needsColor || state.selectedColor));
   $('confirm-booking').disabled = !ready;
+  if (!state.bookingIntent) return;
+  const isRequest = state.bookingIntent === 'request';
+  $('confirm-booking').textContent = isRequest ? 'Terminanfrage senden' : 'Termin verbindlich reservieren';
+  $('booking-hint').textContent = isRequest
+    ? 'Die Wunschzeit ist zunächst nur eine Anfrage und blockiert noch keinen Termin.'
+    : 'Dieser Termin wird sofort verbindlich reserviert.';
   if (!ready) {
     const missing = needsColor && !state.selectedColor ? 'Bitte Farbe, Datum und Uhrzeit wählen' : 'Bitte Datum und Uhrzeit wählen';
-    $('booking-summary').innerHTML = `<div class="summary-line"><span>Termin</span><strong>${missing}</strong></div>`;
+    $('booking-summary').innerHTML = `<div class="summary-line"><span>${isRequest?'Anfrage':'Termin'}</span><strong>${missing}</strong></div>`;
     return;
   }
   $('booking-summary').innerHTML = `
+    <div class="summary-line"><span>Art</span><strong>${isRequest?'Freie Terminanfrage':'Verbindliche Buchung'}</strong></div>
     <div class="summary-line"><span>Behandlung</span><strong>${esc(state.selectedService.name)}</strong></div>
     ${needsColor ? `<div class="summary-line"><span>Farbe</span><strong><img class="inline-swatch" src="${colorSwatchData(state.selectedColor.hex_color)}" alt="">${esc(state.selectedColor.name)}</strong></div>` : ''}
-    <div class="summary-line"><span>Termin</span><strong>${esc(formatDate(state.selectedDate))} · ${esc(state.selectedTime)} Uhr</strong></div>
+    <div class="summary-line"><span>${isRequest?'Wunschzeit':'Termin'}</span><strong>${esc(formatDate(state.selectedDate))} · ${esc(state.selectedTime)} Uhr</strong></div>
     <div class="summary-line"><span>Dauer / Preis</span><strong>${Number(state.selectedService.duration_min)} Min. · ${esc(state.selectedService.price_label || '')}</strong></div>`;
 }
 
 async function submitBooking(event) {
   event.preventDefault();
-  if (!state.selectedService || !state.selectedDate || !state.selectedTime) return;
+  if (!state.bookingIntent || !state.selectedService || !state.selectedDate || !state.selectedTime) return;
   if (Number(state.selectedService.color_enabled) && !state.selectedColor) { showToast('Bitte eine Farbe auswählen.','error'); return; }
-  const name = $('customer-name').value.trim();
-  if (!name) { $('customer-name').focus(); showToast('Bitte deinen Namen eingeben.','error'); return; }
+  const isRequest = state.bookingIntent === 'request';
   const button = $('confirm-booking');
   button.disabled = true;
-  button.textContent = 'Termin wird reserviert …';
+  button.textContent = isRequest ? 'Anfrage wird gesendet …' : 'Termin wird reserviert …';
   try {
     const booking = await state.provider.createBooking({
-      customer_name:name,
-      customer_email:$('customer-email').value.trim(),
-      customer_phone:$('customer-phone').value.trim(),
       service_id:state.selectedService.id,
       nail_color_id:state.selectedColor?.id || '',
       date:state.selectedDate,
       start_time:state.selectedTime,
-      notes:$('customer-notes').value.trim()
+      booking_mode:isRequest ? 'requested' : 'confirmed'
     });
     state.latestBooking = booking;
     state.dirty = false;
@@ -685,17 +797,20 @@ async function submitBooking(event) {
     $('success-dialog').showModal();
     if (state.mode === 'server') setConnectivity('');
   } catch (e) {
-    showToast(e.message || 'Buchung fehlgeschlagen','error');
-    if (state.mode === 'server') setConnectivity('Server nicht erreichbar oder Buchung nicht möglich. Es wurde nichts lokal als gespeichert markiert.');
-    await renderSlots();
+    showToast(e.message || (isRequest ? 'Anfrage fehlgeschlagen' : 'Buchung fehlgeschlagen'),'error');
+    if (state.mode === 'server') setConnectivity('Server nicht erreichbar oder Termin konnte nicht gespeichert werden. Es wird nichts lokal vorgetäuscht.');
+    if (!isRequest) await renderSlots();
   } finally {
-    button.textContent = 'Termin verbindlich reservieren';
-    button.disabled = !(state.selectedService && state.selectedDate && state.selectedTime && (!Number(state.selectedService.color_enabled) || state.selectedColor));
+    updateBookingSummary();
   }
 }
 
 function renderSuccess(booking) {
+  const requested = booking.status === 'requested';
+  $('success-eyebrow').textContent = requested ? 'Terminanfrage gesendet' : 'Reservierung bestätigt';
+  $('success-title').textContent = requested ? 'Philipp prüft deinen Wunsch.' : 'Dein Termin steht.';
   $('success-details').innerHTML = `
+    <div class="success-row"><span>Status</span><strong>${requested?'Noch nicht bestätigt':'Verbindlich gebucht'}</strong></div>
     <div class="success-row"><span>Behandlung</span><strong>${esc(booking.service_name)}</strong></div>
     ${booking.nail_color_name ? `<div class="success-row"><span>Farbe</span><strong><img class="inline-swatch" src="${colorSwatchData(booking.nail_color_hex)}" alt="">${esc(booking.nail_color_name)}</strong></div>` : ''}
     <div class="success-row"><span>Datum</span><strong>${esc(formatDate(booking.date))}</strong></div>
@@ -706,15 +821,19 @@ function renderSuccess(booking) {
 function resetBookingFlow() {
   state.selectedService = null;
   state.selectedColor = null;
+  state.bookingIntent = null;
   state.selectedDate = null;
   state.selectedTime = null;
+  state.availabilityDays = {};
   $('booking-form').reset();
   $('booking-stage').classList.add('hidden');
+  $('booking-form').classList.add('hidden');
+  $('book-flow').classList.add('hidden');
+  $('request-flow').classList.add('hidden');
   $('color-section').classList.add('hidden');
   renderServices();
   state.dirty = false;
 }
-
 
 async function loadAppointments(extraCode='') {
   if (!state.provider) return;
@@ -736,9 +855,10 @@ async function loadAppointments(extraCode='') {
 
 function appointmentCard(row) {
   const d = parseLocalDate(row.date);
-  return `<article class="appointment-card ${row.status==='cancelled'?'cancelled':''}">
+  const statusLabel = row.status === 'requested' ? 'Anfrage offen' : row.status === 'rejected' ? 'abgelehnt' : row.status === 'cancelled' ? 'storniert' : 'bestätigt';
+  return `<article class="appointment-card ${['cancelled','rejected'].includes(row.status)?'cancelled':''}">
     <div class="appointment-date"><small>${MONTHS[d.getMonth()]}</small><strong>${d.getDate()}</strong></div>
-    <div class="appointment-main"><strong>${esc(row.service_name)}</strong><span>${esc(formatDate(row.date,false))} · ${esc(row.start_time)}–${esc(row.end_time)} Uhr${row.nail_color_name?` · ${esc(row.nail_color_name)}`:''}${row.status==='cancelled'?' · storniert':''}</span></div>
+    <div class="appointment-main"><strong>${esc(row.service_name)}</strong><span>${esc(formatDate(row.date,false))} · ${esc(row.start_time)}–${esc(row.end_time)} Uhr${row.nail_color_name?` · ${esc(row.nail_color_name)}`:''} · ${esc(statusLabel)}</span></div>
     <div class="appointment-code">${esc(row.public_code)}</div>
   </article>`;
 }
@@ -857,7 +977,7 @@ async function handleImportFile(file) {
     const counts = preview.counts || preview;
     state.pendingImport = payload;
     $('import-preview').innerHTML = `
-      <strong>Backup geprüft</strong><p>${Number(counts.services)} Leistungen · ${Number(counts.nail_colors || 0)} Farben · ${Number(counts.opening_hours)} Öffnungstage · ${Number(counts.bookings)} Buchungen.</p>
+      <strong>Backup geprüft</strong><p>${Number(counts.services)} Leistungen · ${Number(counts.nail_colors || 0)} Farben · ${Number(counts.opening_hours)} Wochenregeln · ${Number(counts.availability_overrides || 0)} Tagesausnahmen · ${Number(counts.bookings)} Termine/Anfragen.</p>
       <div class="button-row"><button class="secondary-button" id="import-merge" type="button">Zusammenführen</button><button class="ghost-button danger-text" id="import-replace" type="button">Ersetzen</button></div>`;
     $('import-preview').classList.remove('hidden');
     $('import-merge').addEventListener('click', () => applyImport('merge'));
@@ -919,28 +1039,89 @@ async function loadAdminState() {
 function renderAdminHours() {
   const root = $('admin-tab-hours');
   const hours = state.adminState?.opening_hours || [];
-  root.innerHTML = `<div class="admin-list">${hours.map(item => `
-    <div class="admin-card" data-hour-day="${item.weekday}">
-      <div class="admin-card-head"><h3>${WEEKDAYS[item.weekday]}</h3><label class="toggle-row"><input type="checkbox" data-hour-field="enabled" ${Number(item.enabled)?'checked':''}> Geöffnet</label></div>
-      <div class="field-grid">
-        <label class="field"><span>Von</span><input type="time" data-hour-field="start_time" value="${esc(item.start_time)}"></label>
-        <label class="field"><span>Bis</span><input type="time" data-hour-field="end_time" value="${esc(item.end_time)}"></label>
-        <label class="field field-full"><span>Startzeit-Raster in Minuten</span><select data-hour-field="slot_interval_min"><option value="15" ${Number(item.slot_interval_min)===15?'selected':''}>15 Minuten</option><option value="30" ${Number(item.slot_interval_min)===30?'selected':''}>30 Minuten</option><option value="60" ${Number(item.slot_interval_min)===60?'selected':''}>60 Minuten</option></select></label>
-      </div>
-    </div>`).join('')}</div><div class="admin-actions"><button class="primary-button" id="save-hours" type="button">Öffnungszeiten speichern</button></div>`;
+  const overrides = state.adminState?.availability_overrides || [];
+  root.innerHTML = `
+    <div class="settings-card availability-intro">
+      <div class="settings-card-head"><div><small>Grundregel</small><h3>Regelmässige Freizeit</h3></div></div>
+      <p>Diese Zeiten bilden deine normale Woche. Tagesausnahmen darunter ersetzen die Wochenregel für das jeweilige Datum vollständig.</p>
+    </div>
+    <div class="admin-list">${hours.map(item => `
+      <div class="admin-card" data-hour-day="${item.weekday}">
+        <div class="admin-card-head"><h3>${WEEKDAYS[item.weekday]}</h3><label class="toggle-row"><input type="checkbox" data-hour-field="enabled" ${Number(item.enabled)?'checked':''}> Verfügbar</label></div>
+        <div class="field-grid">
+          <label class="field"><span>Von</span><span class="ios-input-shell"><input type="time" data-hour-field="start_time" value="${esc(item.start_time)}"></span></label>
+          <label class="field"><span>Bis</span><span class="ios-input-shell"><input type="time" data-hour-field="end_time" value="${esc(item.end_time)}"></span></label>
+          <label class="field field-full"><span>Startzeit-Raster</span><select data-hour-field="slot_interval_min"><option value="15" ${Number(item.slot_interval_min)===15?'selected':''}>15 Minuten</option><option value="30" ${Number(item.slot_interval_min)===30?'selected':''}>30 Minuten</option><option value="60" ${Number(item.slot_interval_min)===60?'selected':''}>60 Minuten</option></select></label>
+        </div>
+      </div>`).join('')}</div>
+    <div class="admin-actions"><button class="primary-button" id="save-hours" type="button">Wochenplan speichern</button></div>
+
+    <div class="settings-card availability-intro">
+      <div class="settings-card-head"><div><small>Ausnahmen</small><h3>Einzelne Tage</h3></div></div>
+      <p>Ideal für spontane Freizeit, Ferien oder einen Tag, an dem du bewusst keine Termine möchtest.</p>
+      <div class="button-row wrap-row"><button class="secondary-button" id="add-available-override" type="button">Freie Zeit hinzufügen</button><button class="ghost-button" id="add-closed-override" type="button">Tag sperren</button></div>
+    </div>
+    <div class="admin-list" id="availability-override-list">${overrides.length ? overrides.map((item,index) => availabilityOverrideCard(item,index)).join('') : '<p class="empty-state">Noch keine Tagesausnahmen. Es gilt der Wochenplan.</p>'}</div>
+    <div class="admin-actions"><button class="primary-button" id="save-overrides" type="button">Tagesausnahmen speichern</button></div>`;
   $('save-hours').addEventListener('click', saveAdminHours);
+  $('add-available-override').addEventListener('click', () => {
+    state.adminState.availability_overrides.push({id:uid(),date:localDateString(new Date()),kind:'available',start_time:'18:00',end_time:'21:00'});
+    renderAdminHours();
+  });
+  $('add-closed-override').addEventListener('click', () => {
+    state.adminState.availability_overrides.push({id:uid(),date:localDateString(new Date()),kind:'closed',start_time:'',end_time:''});
+    renderAdminHours();
+  });
+  qsa('[data-remove-override]',root).forEach(button => button.addEventListener('click', () => {
+    state.adminState.availability_overrides.splice(Number(button.dataset.removeOverride),1);
+    renderAdminHours();
+  }));
+  $('save-overrides').addEventListener('click', saveAvailabilityOverrides);
+}
+
+function availabilityOverrideCard(item,index) {
+  const closed = item.kind === 'closed';
+  return `<div class="admin-card" data-override-index="${index}">
+    <div class="admin-card-head"><h3>${closed?'Tag gesperrt':'Zusätzliche Freizeit'}</h3><button class="text-button danger-text" data-remove-override="${index}" type="button">Entfernen</button></div>
+    <div class="field-grid">
+      <label class="field field-full"><span>Datum</span><span class="ios-input-shell"><input type="date" data-override-field="date" value="${esc(item.date || '')}"></span></label>
+      <label class="field field-full"><span>Regel</span><select data-override-field="kind"><option value="available" ${!closed?'selected':''}>An diesem Tag verfügbar</option><option value="closed" ${closed?'selected':''}>An diesem Tag nicht verfügbar</option></select></label>
+      <label class="field override-time ${closed?'hidden':''}"><span>Von</span><span class="ios-input-shell"><input type="time" data-override-field="start_time" value="${esc(item.start_time || '18:00')}"></span></label>
+      <label class="field override-time ${closed?'hidden':''}"><span>Bis</span><span class="ios-input-shell"><input type="time" data-override-field="end_time" value="${esc(item.end_time || '21:00')}"></span></label>
+    </div>
+  </div>`;
 }
 
 async function saveAdminHours() {
   const items = qsa('[data-hour-day]').map(card => ({
     weekday:Number(card.dataset.hourDay),
-    enabled:card.querySelector('[data-hour-field="enabled"]').checked ? 1 : 0,
+    enabled:card.querySelector('[data-hour-field="enabled"]').checked?1:0,
     start_time:card.querySelector('[data-hour-field="start_time"]').value,
     end_time:card.querySelector('[data-hour-field="end_time"]').value,
     slot_interval_min:Number(card.querySelector('[data-hour-field="slot_interval_min"]').value)
   }));
-  try { await state.provider.saveOpeningHours(items); state.adminState.opening_hours=items; showToast('Öffnungszeiten gespeichert.'); }
+  try { await state.provider.saveOpeningHours(items); state.adminState.opening_hours=items; showToast('Wochenplan gespeichert.'); }
   catch (e) { showToast(e.message,'error'); }
+}
+
+async function saveAvailabilityOverrides() {
+  const items = qsa('[data-override-index]').map(card => {
+    const index=Number(card.dataset.overrideIndex);
+    const old=state.adminState.availability_overrides[index] || {};
+    const kind=card.querySelector('[data-override-field="kind"]').value;
+    return {
+      id:old.id || uid(), date:card.querySelector('[data-override-field="date"]').value, kind,
+      start_time:kind==='available'?card.querySelector('[data-override-field="start_time"]').value:'',
+      end_time:kind==='available'?card.querySelector('[data-override-field="end_time"]').value:'',
+      created_at:old.created_at || nowIso(), updated_at:nowIso()
+    };
+  });
+  try {
+    await state.provider.saveAvailabilityOverrides(items);
+    state.adminState.availability_overrides=items.sort((a,b)=>`${a.date}${a.start_time}`.localeCompare(`${b.date}${b.start_time}`));
+    renderAdminHours();
+    showToast('Tagesausnahmen gespeichert.');
+  } catch (e) { showToast(e.message,'error'); }
 }
 
 function renderAdminServices() {
@@ -1038,18 +1219,32 @@ function renderAdminBookings() {
   const root = $('admin-tab-bookings');
   const rows = state.adminState?.bookings || [];
   const mailInfo = state.mode === 'server'
-    ? `<div class="settings-card notification-card"><div class="settings-card-head"><div><small>Benachrichtigung</small><h3>E-Mail bei neuer Buchung</h3></div><span class="status-dot ${state.adminState?.notification_enabled?'ok':'bad'}"></span></div><p>${state.adminState?.notification_enabled?'Aktiv. Neue Server-Buchungen werden persistent in der Outbox erfasst und bei Zustellfehlern erneut versucht.':'Nicht vollständig konfiguriert oder deaktiviert. Prüfe die SMTP-/NOTIFY-Environment-Variablen.'}</p></div>`
-    : `<div class="security-note"><strong>Lokaler Modus:</strong> Lokale Buchungen werden nur auf diesem Gerät gespeichert und lösen keine E-Mail an Philipp aus.</div>`;
+    ? `<div class="settings-card notification-card"><div class="settings-card-head"><div><small>Benachrichtigung</small><h3>E-Mail bei Buchung & Anfrage</h3></div><span class="status-dot ${state.adminState?.notification_enabled?'ok':'bad'}"></span></div><p>${state.adminState?.notification_enabled?'Aktiv. Verbindliche Buchungen und freie Terminanfragen werden persistent in der Outbox erfasst. Buchungen enthalten den ICS-Anhang; Anfragen bewusst noch nicht.':'Nicht vollständig konfiguriert oder deaktiviert. Prüfe die SMTP-/NOTIFY-Environment-Variablen.'}</p></div>`
+    : `<div class="security-note"><strong>Lokaler Modus:</strong> Lokale Buchungen und Anfragen bleiben auf diesem Gerät und lösen keine E-Mail an Philipp aus.</div>`;
   root.innerHTML = `${mailInfo}<div class="admin-list admin-booking-list">${rows.length ? rows.map(row => {
     const mailStatus = row.notification_status === 'sent' ? 'Mail gesendet' : row.notification_status === 'failed' ? 'Mail-Zustellung fehlgeschlagen' : row.notification_status === 'pending' ? 'Mail ausstehend' : 'Keine Mail eingeplant';
     const retry = state.mode === 'server' && state.adminState?.notification_enabled && row.notification_status && row.notification_status !== 'sent'
       ? `<button class="ghost-button" data-retry-notification="${esc(row.id)}" type="button">Mail erneut versuchen</button>` : '';
-    return `<div class="admin-card ${row.status==='cancelled'?'cancelled':''}">
-      <div class="admin-card-head"><h3>${esc(row.customer_name)}</h3><span class="version-chip">${esc(row.public_code)}</span></div>
-      <div class="booking-admin-meta"><strong>${esc(row.service_name)}</strong><span>${esc(formatDate(row.date))} · ${esc(row.start_time)}–${esc(row.end_time)} Uhr · ${esc(row.price_label||'')}</span>${row.nail_color_name?`<span>Farbe: ${esc(row.nail_color_name)}</span>`:''}${row.notes?`<span>Notiz: ${esc(row.notes)}</span>`:''}<span>Status: ${esc(row.status)}</span>${state.mode==='server'?`<span>Benachrichtigung: ${esc(mailStatus)}${Number(row.notification_attempts)>0?` · ${Number(row.notification_attempts)} Versuch${Number(row.notification_attempts)===1?'':'e'}`:''}</span>`:''}</div>
-      ${row.status==='confirmed'||retry?`<div class="admin-actions">${row.status==='confirmed'?`<button class="ghost-button danger-text" data-cancel-booking="${esc(row.id)}" type="button">Termin stornieren</button>`:''}${retry}</div>`:''}
+    const statusLabel = row.status === 'requested' ? 'Anfrage offen' : row.status === 'rejected' ? 'Abgelehnt' : row.status === 'cancelled' ? 'Storniert' : 'Bestätigt';
+    const requestActions = row.status === 'requested'
+      ? `<button class="primary-button compact-action" data-confirm-request="${esc(row.id)}" type="button">Bestätigen</button><button class="ghost-button danger-text" data-reject-request="${esc(row.id)}" type="button">Ablehnen</button>` : '';
+    const cancelAction = row.status === 'confirmed' ? `<button class="ghost-button danger-text" data-cancel-booking="${esc(row.id)}" type="button">Termin stornieren</button>` : '';
+    return `<div class="admin-card ${['cancelled','rejected'].includes(row.status)?'cancelled':''} ${row.status==='requested'?'request-card':''}">
+      <div class="admin-card-head"><h3>${esc(row.service_name)}</h3><span class="version-chip">${esc(row.public_code)}</span></div>
+      <div class="booking-admin-meta"><span>${esc(formatDate(row.date))} · ${esc(row.start_time)}–${esc(row.end_time)} Uhr · ${esc(row.price_label||'')}</span>${row.nail_color_name?`<span>Farbe: ${esc(row.nail_color_name)}</span>`:''}${row.notes?`<span>Notiz: ${esc(row.notes)}</span>`:''}<span><strong>Status: ${esc(statusLabel)}</strong></span>${state.mode==='server'?`<span>Benachrichtigung: ${esc(mailStatus)}${Number(row.notification_attempts)>0?` · ${Number(row.notification_attempts)} Versuch${Number(row.notification_attempts)===1?'':'e'}`:''}</span>`:''}</div>
+      ${(requestActions||cancelAction||retry)?`<div class="admin-actions">${requestActions}${cancelAction}${retry}</div>`:''}
     </div>`;
-  }).join('') : '<p class="empty-state">Keine Buchungen vorhanden.</p>'}</div>`;
+  }).join('') : '<p class="empty-state">Keine Termine oder Anfragen vorhanden.</p>'}</div>`;
+  qsa('[data-confirm-request]',root).forEach(button => button.addEventListener('click', async () => {
+    if (!confirm('Diese Wunschzeit verbindlich bestätigen?')) return;
+    try { await state.provider.confirmBooking(button.dataset.confirmRequest); await loadAdminState(); showToast('Terminanfrage bestätigt.'); }
+    catch (e) { showToast(e.message,'error'); }
+  }));
+  qsa('[data-reject-request]',root).forEach(button => button.addEventListener('click', async () => {
+    if (!confirm('Diese Terminanfrage ablehnen?')) return;
+    try { await state.provider.rejectBooking(button.dataset.rejectRequest); await loadAdminState(); showToast('Terminanfrage abgelehnt.'); }
+    catch (e) { showToast(e.message,'error'); }
+  }));
   qsa('[data-cancel-booking]',root).forEach(button => button.addEventListener('click', async () => {
     if (!confirm('Diesen Termin wirklich stornieren?')) return;
     try { await state.provider.cancelBooking(button.dataset.cancelBooking); await loadAdminState(); showToast('Termin storniert.'); }
@@ -1140,6 +1335,10 @@ function bindEvents() {
   qsa('[data-nav]').forEach(button => button.addEventListener('click', () => goView(button.dataset.nav)));
   $('brand-home').addEventListener('click', () => goView('book'));
   $('open-more').addEventListener('click', () => goView('more'));
+  $('choose-book-slot').addEventListener('click', () => chooseBookingIntent('book'));
+  $('choose-request-slot').addEventListener('click', () => chooseBookingIntent('request'));
+  $('request-date').addEventListener('input', syncRequestInputs);
+  $('request-time').addEventListener('input', syncRequestInputs);
   $('booking-form').addEventListener('submit', submitBooking);
   qsa('#booking-form input, #booking-form textarea').forEach(el => el.addEventListener('input', () => { state.dirty = true; }));
   $('success-close').addEventListener('click', () => { $('success-dialog').close(); resetBookingFlow(); goView('book'); });

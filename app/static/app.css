@@ -382,3 +382,22 @@ main { width: min(980px, 100%); margin: 0 auto; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+/* v4 · booking intent and personal availability */
+.booking-method-grid { display: grid; gap: 10px; }
+.booking-method { display: grid; gap: 6px; width: 100%; min-height: 92px; padding: 17px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.78); color: var(--ink); text-align: left; cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+.booking-method strong { font-family: Georgia, serif; font-size: 20px; font-weight: 500; }
+.booking-method span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.booking-method.selected { border-color: rgba(141,95,82,.58); background: #fffdf9; box-shadow: 0 0 0 3px rgba(141,95,82,.08); }
+.ios-input-shell { display: flex; width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.78); }
+.ios-input-shell input[type="date"], .ios-input-shell input[type="time"] { display: block; width: 100%; min-width: 0; max-width: 100%; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: inherit; }
+.request-picker-grid { margin-top: 14px; }
+.availability-intro { margin-bottom: 10px; }
+.request-card { border-color: rgba(141,95,82,.35); background: rgba(255,252,247,.88); }
+.compact-action { min-height: 42px; padding: 9px 13px; }
+
+@media (min-width: 680px) {
+  .booking-method-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+.date-button.unavailable, .date-button:disabled { opacity: .34; cursor: default; box-shadow: none; }
+.date-button.unavailable strong { color: var(--muted); }

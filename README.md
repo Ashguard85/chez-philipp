@@ -1,97 +1,50 @@
-# Chez Philipp – Docker v2.0.0
+# Chez Philipp – Docker v4.0.0
 
-Vollständige self-hosted Fullstack-Anwendung für das private Buchungstool **Chez Philipp**. Das Docker-Paket funktioniert eigenständig und liefert Flask-Backend, REST-API, SQLite-Datenbank, vollständiges Frontend und PWA aus einem Container aus. Persistente Nutzdaten liegen ausschließlich unter `/app/data`.
+Chez Philipp ist eine iPhone-first Buchungs-PWA für den privaten Betrieb. Docker v4.0.0 und Pages v4.0.0 gehören zum selben Release. Das Docker-Paket ist vollständig eigenständig: Flask-Backend, REST-API, SQLite, PWA, Adminbereich, Backup/Restore und Benachrichtigungen laufen in einem Container. Das Pages-Paket ist nur ein zusätzlicher statischer Client.
 
-Docker v2.0.0 und Pages v2.0.0 gehören zum selben Release. Das gemeinsame JSON-Backupformat ist Version 2; v1-Backups können weiterhin importiert werden.
+## Neu in v4
 
-## Architektur
+v4 führt zwei bewusst getrennte Terminwege ein:
 
-```text
-Docker Browser/PWA
-      │
-      ▼
-Flask + gemeinsame Frontend-Codebasis
-      │
-      ├── REST API
-      ├── SQLite /app/data/app.sqlite
-      ├── Mail-Outbox
-      └── Backups /app/data/backups
+1. **Termin buchen** – die Benutzerin wählt einen von Philipp freigegebenen Slot. Dieser Termin wird sofort als `confirmed` gespeichert und blockiert den Zeitraum.
+2. **Freien Termin anfragen** – Datum und Uhrzeit werden frei per iOS-Date-/Time-Picker vorgeschlagen. Die Anfrage wird als `requested` gespeichert und blockiert noch keinen Zeitraum. Im Adminbereich kann Philipp sie bestätigen oder ablehnen. Vor einer Bestätigung wird erneut auf Konflikte mit bereits bestätigten Terminen geprüft.
 
-GitHub-Pages-PWA (optional)
-      ├── ServerProvider -> Docker REST API
-      └── LocalProvider  -> IndexedDB
-```
+Die Verfügbarkeit besteht aus:
 
-Die GitHub-Pages-PWA ist niemals Voraussetzung für den Docker-Betrieb.
+- einem **regelmässigen Wochenplan** als Grundregel,
+- **Tagesausnahmen**, die die Wochenregel für ein konkretes Datum ersetzen,
+- mehreren freien Zeitfenstern am selben Ausnahmetag,
+- der Möglichkeit, einen einzelnen Tag vollständig zu sperren.
 
-## v2 – neue Buchungsbenachrichtigung
+Beispiel: Samstag ist regulär 09:00–16:00 verfügbar. Für einen bestimmten Samstag können stattdessen 10:00–13:00 und 15:00–18:00 freigegeben werden. Ein sonst geschlossener Mittwoch kann einmalig 19:00–21:30 freigegeben werden.
 
-Bei **jeder neu angelegten Server-Buchung** kann der Docker-Server eine E-Mail an Philipp senden. Es werden bewusst **keine** Bestätigungs- oder Storno-Mails an den buchenden Benutzer versendet.
+## Benachrichtigungen
 
-Die Buchung und der Benachrichtigungsauftrag werden persistent gespeichert. Ein SMTP-Fehler macht die Buchung nicht rückgängig. Fehlgeschlagene Nachrichten bleiben in `notification_outbox` erhalten und werden mit wachsendem Abstand erneut versucht. Beim Neustart bleibt der Auftrag erhalten. Im Adminbereich wird der Zustellstatus angezeigt und ein manueller Retry angeboten.
+Neue Server-Buchungen und freie Terminanfragen erzeugen eine persistente Outbox-Nachricht. Ein SMTP-Fehler macht die Buchung/Anfrage nicht rückgängig; die Zustellung wird mit exponentiellem Abstand erneut versucht.
 
-Der lokale IndexedDB-Modus kann keine Server-E-Mail auslösen. Für den gewünschten Heimnetz-Betrieb mit Benachrichtigung daher das Docker-Frontend bzw. den Pages-**Server-Modus** verwenden.
+- **Direkte Buchung:** HTML-Mail + Text-Fallback + `.ics`-Anhang.
+- **Freie Terminanfrage:** HTML-Mail + Text-Fallback, bewusst **ohne ICS**, weil der Termin noch nicht bestätigt ist.
+- Keine Bestätigungs- oder Storno-Mail an die buchende Person.
+- Keine Secrets in JSON-Backups.
 
-### Gmail
-
-Für ein privates Setup kann Gmail direkt per SMTP verwendet werden:
+### Gmail mit App-Passwort
 
 ```env
 NOTIFY_ENABLED=true
-NOTIFY_EMAIL=zieladresse@gmail.com
+NOTIFY_EMAIL=deine-zieladresse@example.com
 SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURITY=starttls
-SMTP_USER=absender@gmail.com
-SMTP_PASSWORD=GOOGLE_APP_PASSWORT
-SMTP_FROM=absender@gmail.com
+SMTP_PORT=465
+SMTP_SECURITY=ssl
+SMTP_USER=chezphilipp.notifications@gmail.com
+SMTP_PASSWORD=DEIN_16_STELLIGES_APP_PASSWORT
+SMTP_FROM=chezphilipp.notifications@gmail.com
 NOTIFY_RETRY_SECONDS=60
 NOTIFY_MAX_ATTEMPTS=12
 ```
 
-`SMTP_PASSWORD` gehört ausschließlich in Portainer/Docker-Environment und niemals ins Repository. Für klassische SMTP-Anmeldung mit einem Google-Konto wird ein Google-App-Passwort verwendet; das normale Kontopasswort soll nicht hinterlegt werden. Falls das Google-Konto keine App-Passwörter zulässt, kann stattdessen ein anderer SMTP-Anbieter verwendet werden.
+Das Google-App-Passwort ohne Leerzeichen eintragen. Das normale Google-Passwort gehört nicht in den Container.
 
-Die Mail enthält nur die Informationen zur neuen Buchung, z. B. Termin, Behandlung, gewählte Nagelfarbe, Name, Buchungscode und optional Telefon/E-Mail/Notiz.
-
-## Nagelfarben
-
-v2 ergänzt eine administrierbare Farbpalette. Jede Leistung besitzt die Option **„Farbauswahl bei dieser Leistung anzeigen“**. Standardmäßig ist sie bei Manicure/Pedicure-bezogenen Leistungen aktiv.
-
-Farben besitzen:
-
-- ID
-- Name
-- Hex-Farbwert
-- Aktiv-Status
-- Sortierreihenfolge
-
-Standardpalette: Nude, Blush, Rosé, Classic Red, Bordeaux, Taupe, Milky White, Black, French und „Vor Ort entscheiden“.
-
-Eine Buchung speichert zusätzlich einen Snapshot aus `nail_color_id`, `nail_color_name` und `nail_color_hex`. Alte Buchungen bleiben dadurch verständlich, selbst wenn die Palette später geändert wird.
-
-## Datenbank / Migration
-
-SQLite: `/app/data/app.sqlite`
-
-Die Verbindung verwendet:
-
-- WAL
-- `synchronous=FULL`
-- `foreign_keys=ON`
-- Busy Timeout
-
-Schema v2 ergänzt:
-
-- `services.color_enabled`
-- Tabelle `nail_colors`
-- Farbsnapshot-Felder in `bookings`
-- persistente `notification_outbox`
-
-Beim Update einer bestehenden v1-Datenbank wird vor der Migration automatisch ein SQLite-Snapshot unter `/app/data/backups/` erzeugt. Bestehende Buchungen bleiben erhalten.
-
-## Portainer / Git Deployment
-
-Beispiel:
+## Portainer Stack Web Editor
 
 ```yaml
 services:
@@ -105,19 +58,19 @@ services:
       - /home/USER/docker/chez-philipp/data:/app/data
     environment:
       APP_TITLE: "Chez Philipp"
-      APP_URL: "https://chez-philipp.example.internal"
+      APP_URL: "https://chezphilipp.example.com"
       APP_TIMEZONE: "Europe/Zurich"
       AUTH_ENABLED: "true"
       ADMIN_PIN: "${ADMIN_PIN}"
       SECRET_KEY: "${SECRET_KEY}"
       BACKUP_KEEP: "50"
+      BOOKING_CUSTOMER_NAME: "Meine Frau"
       PWA_ALLOWED_ORIGIN: "https://app.example.com"
-
       NOTIFY_ENABLED: "true"
       NOTIFY_EMAIL: "${NOTIFY_EMAIL}"
       SMTP_HOST: "smtp.gmail.com"
-      SMTP_PORT: "587"
-      SMTP_SECURITY: "starttls"
+      SMTP_PORT: "465"
+      SMTP_SECURITY: "ssl"
       SMTP_USER: "${SMTP_USER}"
       SMTP_PASSWORD: "${SMTP_PASSWORD}"
       SMTP_FROM: "${SMTP_USER}"
@@ -126,121 +79,126 @@ services:
     restart: unless-stopped
 ```
 
-Für reinen Heimnetz-Betrieb muss Cloudflare nicht verwendet werden. Soll die App als installierte PWA funktionieren, sollte der Browser sie trotzdem über einen sicheren HTTPS-Ursprung erreichen. Das kann beispielsweise ein lokaler Reverse Proxy mit vertrauenswürdigem Zertifikat übernehmen.
+Für reinen Heimnetz-Dockerbetrieb kann `PWA_ALLOWED_ORIGIN` leer bleiben. Wenn die Pages-PWA verwendet wird, muss dort exakt deren HTTPS-Origin stehen.
 
-## Environment-Variablen
+## Heimnetz / Pi-hole / eigene Domain
 
-| Variable | Zweck |
-|---|---|
-| `APP_TITLE` | Anzeigename |
-| `APP_URL` | öffentliche bzw. kanonische Backend-Adresse |
-| `APP_TIMEZONE` | Standard `Europe/Zurich` |
-| `SECRET_KEY` | Flask Secret |
-| `AUTH_ENABLED` | Admin-PIN-Prüfung aktivieren |
-| `ADMIN_PIN` | Admin-PIN |
-| `BACKUP_KEEP` | Anzahl SQLite-Sicherungsdateien |
-| `PWA_ALLOWED_ORIGIN` | exakt erlaubte Pages-Origin für CORS |
-| `NOTIFY_ENABLED` | Mailbenachrichtigung bei neuen Server-Buchungen |
-| `NOTIFY_EMAIL` | Empfänger der Buchungsmail |
-| `SMTP_HOST` | SMTP-Server |
-| `SMTP_PORT` | SMTP-Port |
-| `SMTP_SECURITY` | `starttls`, `ssl` oder `none` |
-| `SMTP_USER` | SMTP-Benutzer |
-| `SMTP_PASSWORD` | SMTP-/App-Passwort |
-| `SMTP_FROM` | Absenderadresse |
-| `SMTP_TIMEOUT` | SMTP-Timeout in Sekunden |
-| `NOTIFY_RETRY_SECONDS` | Basisintervall für Retry |
-| `NOTIFY_MAX_ATTEMPTS` | maximale automatische Versuche |
-
-Keine Secrets hardcoden oder in JSON-Backups exportieren.
-
-## API
-
-Wichtige Endpunkte:
+Empfohlenes Setup:
 
 ```text
-GET  /health
-GET  /api/config
-GET  /api/services
-GET  /api/nail-colors
-GET  /api/availability
-POST /api/bookings
-GET  /api/bookings/by-code/<code>
-
-GET  /api/admin/state
-PUT  /api/admin/services
-PUT  /api/admin/nail-colors
-PUT  /api/admin/opening-hours
-DELETE /api/admin/bookings/<id>
-POST /api/admin/notifications/<booking-id>/retry
-GET  /api/admin/export
-POST /api/admin/import/preview
-POST /api/admin/import/apply
-GET  /api/admin/backup
+iPhone
+  ↓
+https://chezphilipp.deinedomain.ch
+  ↓
+Pi-hole Split-DNS
+  ↓
+IP des Docker-Servers
+  ↓
+Reverse Proxy :443
+  ↓
+chez-philipp :8080
 ```
 
-Eine Stornierung erzeugt absichtlich keine E-Mail.
+Keine Portweiterleitung auf dem Internet-Router ist notwendig. Ein gültiges Zertifikat kann über eine DNS-01-Challenge der eigenen Cloudflare-Domain bezogen werden.
 
-## CORS / Cloudflare
+## Datenmodell
 
-Falls das statische Pages-Frontend verwendet wird, darf CORS nicht auf `*` stehen. Setze die exakte Origin:
+SQLite liegt unter `/app/data/app.sqlite` und verwendet WAL, `synchronous=FULL` und Foreign Keys.
 
-```env
-PWA_ALLOWED_ORIGIN=https://app.example.com
-```
+Wichtige Tabellen:
 
-Zugelassene Methoden: GET, POST, PUT, PATCH, DELETE, OPTIONS. Unterstützte zusätzliche Header umfassen `CF-Access-Client-Id`, `CF-Access-Client-Secret` und `X-Admin-Pin`.
+- `services`
+- `nail_colors`
+- `opening_hours` – regelmässiger Wochenplan
+- `availability_overrides` – konkrete Tagesfreigaben / gesperrte Tage
+- `bookings` – direkte Buchungen und Anfragen
+- `notification_outbox`
+- `meta`
 
-Cloudflare ist für Chez Philipp im Heimnetz optional. Wenn es nicht verwendet wird, bleiben die Cloudflare-Felder im Pages-Setup leer.
+Buchungsstatus:
 
-## Backup / Restore
+- `confirmed` – verbindlicher Termin, blockiert den Zeitraum
+- `requested` – freie Anfrage, blockiert nicht
+- `cancelled` – stornierter bestätigter Termin
+- `rejected` – abgelehnte Anfrage
 
-JSON-Format v2:
+## Verfügbarkeitslogik
+
+Für einen Tag gilt:
+
+1. Existieren Tagesausnahmen, ersetzen sie die Wochenregel vollständig.
+2. Eine `closed`-Ausnahme sperrt den Tag.
+3. `available`-Ausnahmen bilden die freigegebenen Zeitfenster.
+4. Ohne Tagesausnahme gilt der normale Wochenplan.
+5. Die Dauer der gewählten Leistung muss vollständig in ein freigegebenes Fenster passen.
+6. Bestätigte Termine werden als belegt abgezogen.
+7. Offene Anfragen blockieren keine Slots.
+
+## Adminbereich
+
+Der Adminbereich enthält:
+
+- **Freizeit:** Wochenplan + Tagesausnahmen
+- **Leistungen:** Name, Dauer, Preistext, Aktivstatus, Farbauswahl
+- **Farben:** Name, Hex-Farbe, Reihenfolge, Aktivstatus
+- **Termine:** bestätigte Termine, offene Anfragen, Mailstatus, Bestätigen/Ablehnen, Stornieren, Mail-Retry
+- **Backup:** JSON und serverseitiger SQLite-Snapshot
+
+## Backup / Restore / Migration
+
+Backupformat v3:
 
 ```json
 {
   "format": "chez-philipp-backup",
-  "version": 2,
+  "version": 3,
   "data": {
     "services": [],
     "nail_colors": [],
     "opening_hours": [],
+    "availability_overrides": [],
     "bookings": [],
     "meta": {}
   }
 }
 ```
 
-Die Mail-Outbox wird absichtlich **nicht** in das portable JSON-Backup aufgenommen, damit ein Restore keine alten Buchungsmails erneut versendet. Ein vollständiger SQLite-Snapshot enthält sie dagegen.
+v1- und v2-Backups bleiben importierbar. Beim Upgrade einer bestehenden v1- oder v2-Datenbank auf Schema v3 wird zuerst automatisch ein SQLite-Snapshot unter `/app/data/backups/` angelegt. Danach wird die Buchungstabelle kontrolliert erweitert, sodass die neuen Status `requested` und `rejected` unterstützt werden. Bestehende Termine und Outbox-Einträge bleiben erhalten.
 
-Vor serverseitigem Restore bzw. destruktivem Import wird automatisch ein SQLite-Sicherheitsbackup angelegt. v1-Backups bleiben importierbar; die v2-Farbpalette wird bei einem v1-Import nicht zerstört.
+Vor destruktiven Imports wird ebenfalls ein Sicherheitsbackup erstellt.
 
-## PWA / Offline-App-Shell
+## Pages / Local Provider
 
-Cache-Version v2: `chez-philipp-pwa-v2`.
+Die statische Pages-PWA verwendet dieselbe UI-Logik und bietet weiterhin:
 
-App-Shell:
+- Server Provider → Docker REST API
+- Local Provider → IndexedDB
 
-- `index.html`
-- `app.js`
-- `app.css`
-- `config.js`
-- Manifest
-- Offline-Seite
-- alle lokalen Icons
+Im lokalen Modus existieren Wochenplan, Tagesausnahmen, Buchungen und Anfragen ebenfalls. Lokale Buchungen/Anfragen senden bewusst keine E-Mail.
 
-Keine externen Fonts/CDNs. Der Service Worker erzwingt keinen Reload mitten in einer Sitzung. Ein neues Release wird vorbereitet und erst nach sicherem Neustart oder bewusster Benutzeraktion aktiviert. Ein kontrollierter Reload erfolgt höchstens einmal.
+## Offline-App-Shell und Updates
+
+Cache-Version v4: `chez-philipp-pwa-v4`.
+
+Die App-Shell enthält HTML, CSS, JavaScript, Manifest, Offline-Seite und lokale Icons. Es gibt keine externen CDN-Abhängigkeiten. Neue Service-Worker-Versionen werden heruntergeladen und warten, bis die App sicher neu gestartet oder ein manuelles Update ausgelöst wird. Ein `controllerchange` löst nur nach einer bewussten Update-Aktion genau einen Reload aus.
+
+IndexedDB- und SQLite-Daten werden durch Frontend-Updates nicht gelöscht.
 
 ## ZIP-Workflow
 
-`.github/workflows/import-zip.yml` verarbeitet genau ein neu hochgeladenes `*.zip`, schützt `.git` sowie den Workflow selbst, lehnt unsichere Pfade/typische Secret-Dateien ab, entfernt alte Release-Dateien und das importierte ZIP und pusht den neuen Stand ohne Commit-Schleife.
+Das Repository enthält `.github/workflows/import-zip.yml`. Ein neu hochgeladenes `*.zip` wird nur verarbeitet, wenn genau ein ZIP eindeutig vorhanden ist. `.git` und der Workflow selbst werden geschützt, Altdateien werden kontrolliert ersetzt und das ZIP nach erfolgreichem Import entfernt.
 
-Dieses ZIP bildet direkt das Root-Verzeichnis des Docker-Repositories ab.
+Das Release-ZIP repräsentiert direkt das Repository-Root und enthält keine zusätzliche Verzeichnisebene.
 
-## Bekannte Einschränkungen v2
+## Versionskompatibilität
 
-- Keine bidirektionale Sync-Engine zwischen Local- und Server-Modus.
-- Local-Modus kann keine E-Mail-Benachrichtigungen auslösen.
-- Die SMTP-Outbox läuft bewusst im einzigen Gunicorn-Worker; die mitgelieferte Konfiguration verwendet deshalb `--workers 1`. Keine zusätzliche Queue/Microservice nötig.
-- E-Mail-Zustellung kann von Gmail/SMTP/Internet abhängen; die persistente Outbox schützt vor einem einmaligen Zustellfehler, garantiert aber nicht die Annahme durch den externen Mailprovider.
-- Für eine vollwertige installierte PWA auf iOS ist HTTPS erforderlich.
+- Docker: `4.0.0`
+- Pages: `4.0.0`
+- SQLite Schema: `3`
+- JSON Backup: `3`
+- IndexedDB Schema: `3`
+- Service Worker Cache: `chez-philipp-pwa-v4`
+
+## Tests / bekannte Einschränkungen
+
+Statisch geprüft werden Python-Syntax, JavaScript-Syntax, Datenbankschema, v1/v2→v3-Migration, Backupformat, Service-Worker-Dateien und ZIP-Struktur. Ein echter Gmail-Versand benötigt reale Zugangsdaten. Ein vollständiger iOS-PWA-Lifecycle kann nur auf einem echten iPhone/Safari abschliessend geprüft werden.
