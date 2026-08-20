@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#161312">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Chez Philipp">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https:; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Chez Philipp · Private Care Studio</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <button class="brand" id="brand-home" type="button" aria-label="Zur Buchung">
+        <span class="brand-mark">CP</span>
+        <span class="brand-copy"><strong>Chez Philipp</strong><small>Private Care Studio</small></span>
+      </button>
+      <div class="top-actions">
+        <span class="mode-pill" id="mode-pill">…</span>
+        <button class="icon-button" id="open-more" type="button" aria-label="Setup und Einstellungen">•••</button>
+      </div>
+    </header>
+
+    <div class="connectivity hidden" id="connectivity-banner" role="status"></div>
+    <div class="update-banner hidden" id="update-banner" role="status">
+      <div><strong>Neue Version verfügbar</strong><span>Sie ist bereit und wird nicht mitten in deiner Sitzung erzwungen.</span></div>
+      <button class="mini-button" id="apply-update" type="button">Jetzt aktualisieren</button>
+    </div>
+
+    <main>
+      <section class="view active" id="view-book" data-view="book">
+        <div class="hero-card">
+          <div class="hero-kicker">Persönlich. Sorgfältig. Nur für dich.</div>
+          <h1>Dein Termin bei <em>Chez Philipp.</em></h1>
+          <p>Wähle deine Behandlung und reserviere in wenigen Augenblicken deinen persönlichen Termin.</p>
+          <div class="hero-meta">
+            <span><i></i> Private Atmosphäre</span>
+            <span><i></i> Flexible Termine</span>
+          </div>
+        </div>
+
+        <section class="content-section" aria-labelledby="services-title">
+          <div class="section-heading">
+            <div><span class="eyebrow">01 · Behandlung</span><h2 id="services-title">Was darf es sein?</h2></div>
+            <span class="section-note" id="services-note">Auswahl treffen</span>
+          </div>
+          <div class="service-grid" id="service-grid"></div>
+        </section>
+
+        <section class="booking-stage hidden" id="booking-stage" aria-labelledby="booking-title">
+          <div class="selected-service" id="selected-service"></div>
+
+          <div class="content-section compact-section hidden" id="color-section">
+            <div class="section-heading slim-heading">
+              <div><span class="eyebrow">02 · Farbe</span><h2>Welche Farbe darf es sein?</h2></div>
+            </div>
+            <p class="color-intro">Wähle deinen Favoriten – oder entscheide dich ganz entspannt erst vor Ort.</p>
+            <div class="color-grid" id="color-grid" aria-label="Nagelfarbe auswählen"></div>
+          </div>
+
+          <div class="content-section compact-section">
+            <div class="section-heading">
+              <div><span class="eyebrow" id="date-step-label">02 · Datum</span><h2 id="booking-title">Wann passt es dir?</h2></div>
+            </div>
+            <div class="date-strip" id="date-strip" aria-label="Datum auswählen"></div>
+          </div>
+
+          <div class="content-section compact-section">
+            <div class="section-heading slim-heading">
+              <div><span class="eyebrow" id="time-step-label">03 · Uhrzeit</span><h2>Freie Zeiten</h2></div>
+            </div>
+            <div class="slot-grid" id="slot-grid"><p class="empty-state">Bitte zuerst ein Datum wählen.</p></div>
+          </div>
+
+          <form class="booking-form content-section" id="booking-form" novalidate>
+            <div class="section-heading slim-heading">
+              <div><span class="eyebrow" id="details-step-label">04 · Deine Angaben</span><h2>Fast geschafft.</h2></div>
+            </div>
+            <div class="field-grid">
+              <label class="field field-full"><span>Name *</span><input id="customer-name" name="customer_name" autocomplete="name" maxlength="120" required placeholder="Vor- und Nachname"></label>
+              <label class="field"><span>E-Mail</span><input id="customer-email" name="customer_email" type="email" autocomplete="email" maxlength="180" placeholder="name@beispiel.ch"></label>
+              <label class="field"><span>Telefon</span><input id="customer-phone" name="customer_phone" type="tel" autocomplete="tel" maxlength="80" placeholder="+41 …"></label>
+              <label class="field field-full"><span>Wünsche oder Notiz</span><textarea id="customer-notes" name="notes" maxlength="1500" rows="3" placeholder="Optional"></textarea></label>
+            </div>
+            <div class="booking-summary" id="booking-summary"></div>
+            <button class="primary-button" id="confirm-booking" type="submit" disabled>Termin verbindlich reservieren</button>
+            <p class="form-hint" id="booking-hint">Deine Buchung wird erst nach dem Tippen auf „Termin verbindlich reservieren“ gespeichert.</p>
+          </form>
+        </section>
+      </section>
+
+      <section class="view" id="view-appointments" data-view="appointments">
+        <div class="page-head">
+          <span class="eyebrow">Deine Reservierungen</span>
+          <h1>Meine Termine</h1>
+          <p>Auf diesem Gerät gespeicherte Buchungscodes werden automatisch angezeigt. Alternativ kannst du einen Code eingeben.</p>
+        </div>
+        <div class="lookup-card">
+          <label class="field"><span>Buchungscode</span><input id="booking-code-input" maxlength="20" autocapitalize="characters" placeholder="CP-XXXXXXXX"></label>
+          <button class="secondary-button" id="lookup-booking" type="button">Termin suchen</button>
+        </div>
+        <div class="appointment-list" id="appointment-list"></div>
+      </section>
+
+      <section class="view" id="view-more" data-view="more">
+        <div class="page-head">
+          <span class="eyebrow">Setup & Betrieb</span>
+          <h1>Mehr</h1>
+          <p>Modus, Backups, Serverzugang und App-Version – kompakt an einem Ort.</p>
+        </div>
+
+        <div class="settings-stack">
+          <section class="settings-card">
+            <div class="settings-card-head"><div><small>Betriebsmodus</small><h3 id="settings-mode-title">–</h3></div><button class="text-button" id="change-mode" type="button">Ändern</button></div>
+            <p id="settings-mode-description"></p>
+            <div class="security-note hidden" id="local-data-warning"><strong>Lokale Daten liegen nur auf diesem Gerät.</strong> Beim Löschen der PWA, der Website-Daten oder bei Geräteverlust können sie verloren gehen. Lokale Buchungen lösen außerdem keine E-Mail-Benachrichtigung an Philipp aus. Exportiere regelmäßig ein Backup.</div>
+          </section>
+
+          <section class="settings-card" id="server-settings-card">
+            <div class="settings-card-head"><div><small>Server</small><h3>Backend & Cloudflare</h3></div><span class="status-dot" id="server-status-dot"></span></div>
+            <div class="server-summary" id="server-summary">Noch nicht konfiguriert.</div>
+            <div class="button-row">
+              <button class="secondary-button" id="edit-server" type="button">Server einrichten</button>
+              <button class="ghost-button danger-text" id="clear-server" type="button">Zugangsdaten löschen</button>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-head"><div><small>Daten</small><h3>Backup & Restore</h3></div></div>
+            <p>JSON-Backups enthalten fachliche Daten und Einstellungen, aber niemals Cloudflare-Zugangsdaten oder andere Geräte-Secrets.</p>
+            <div class="button-row wrap-row">
+              <button class="secondary-button" id="export-backup" type="button">Backup exportieren</button>
+              <label class="secondary-button file-button" for="import-backup">Backup auswählen</label>
+              <input class="visually-hidden" id="import-backup" type="file" accept="application/json,.json">
+            </div>
+            <div class="import-preview hidden" id="import-preview"></div>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-head"><div><small>PWA</small><h3>Version & Update</h3></div><span class="version-chip" id="version-chip">v2.0.0</span></div>
+            <p id="update-status">Die App prüft bei Gelegenheit auf neue Versionen. Updates werden vorbereitet, aber nicht mitten in einer laufenden Eingabe erzwungen.</p>
+            <div class="button-row">
+              <button class="secondary-button" id="check-update" type="button">Nach Update suchen</button>
+              <button class="ghost-button hidden" id="manual-update" type="button">Jetzt aktualisieren</button>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-head"><div><small>Verwaltung</small><h3>Studio-Administration</h3></div></div>
+            <p>Leistungen, Nagelfarben, Öffnungszeiten, Buchungen und Server-Backups verwalten.</p>
+            <button class="secondary-button" id="open-admin" type="button">Admin-Bereich öffnen</button>
+          </section>
+
+          <section class="settings-card hidden" id="docker-fallback-card">
+            <div class="settings-card-head"><div><small>Fallback</small><h3>Docker-Weboberfläche</h3></div></div>
+            <p>Öffnet bewusst die vollständige Docker-App. Es erfolgt keine automatische Weiterleitung bei temporären Fehlern.</p>
+            <button class="secondary-button" id="open-docker-fallback" type="button">Docker-Weboberfläche öffnen</button>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-admin" data-view="admin">
+        <div class="page-head admin-head">
+          <button class="back-button" id="admin-back" type="button">← Zurück</button>
+          <span class="eyebrow">Studio-Verwaltung</span>
+          <h1>Admin</h1>
+        </div>
+        <div class="admin-login" id="admin-login">
+          <div class="settings-card narrow-card">
+            <h3>Admin-Anmeldung</h3>
+            <p>Der Admin-PIN wird nur für diese Sitzung gehalten und niemals im statischen Frontend gespeichert.</p>
+            <label class="field"><span>Admin-PIN</span><input id="admin-pin" type="password" inputmode="numeric" autocomplete="current-password"></label>
+            <button class="primary-button" id="admin-login-button" type="button">Anmelden</button>
+          </div>
+        </div>
+        <div class="admin-panel hidden" id="admin-panel">
+          <div class="segmented" role="tablist">
+            <button class="segment active" data-admin-tab="hours" type="button">Zeiten</button>
+            <button class="segment" data-admin-tab="services" type="button">Leistungen</button>
+            <button class="segment" data-admin-tab="colors" type="button">Farben</button>
+            <button class="segment" data-admin-tab="bookings" type="button">Termine</button>
+            <button class="segment" data-admin-tab="backup" type="button">Backup</button>
+          </div>
+          <div class="admin-tab-panel active" id="admin-tab-hours"></div>
+          <div class="admin-tab-panel" id="admin-tab-services"></div>
+          <div class="admin-tab-panel" id="admin-tab-colors"></div>
+          <div class="admin-tab-panel" id="admin-tab-bookings"></div>
+          <div class="admin-tab-panel" id="admin-tab-backup"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Hauptnavigation">
+      <button class="nav-button active" data-nav="book" type="button"><span class="nav-glyph">◇</span><span>Buchen</span></button>
+      <button class="nav-button" data-nav="appointments" type="button"><span class="nav-glyph">◷</span><span>Termine</span></button>
+      <button class="nav-button" data-nav="more" type="button"><span class="nav-glyph">•••</span><span>Mehr</span></button>
+    </nav>
+  </div>
+
+  <dialog class="sheet" id="setup-dialog">
+    <form method="dialog" class="sheet-card" id="setup-form">
+      <button class="sheet-close hidden" id="setup-close" value="cancel" type="submit" aria-label="Schließen">×</button>
+      <div class="sheet-mark">CP</div>
+      <span class="eyebrow">Willkommen bei Chez Philipp</span>
+      <h2>Wie möchtest du die App verwenden?</h2>
+      <p class="sheet-intro">Beide Modi verwenden dieselbe Oberfläche. Die Daten bleiben jedoch bewusst getrennt und werden nicht automatisch synchronisiert.</p>
+      <div class="mode-choice-grid" id="mode-choice-grid">
+        <button class="mode-choice" data-mode-choice="local" type="button"><strong>Auf diesem Gerät</strong><span>Lokaler Modus · kein Server nötig · Daten in IndexedDB</span></button>
+        <button class="mode-choice" data-mode-choice="server" type="button"><strong>Mit meinem Server</strong><span>Server-Modus · Docker-Backend per HTTPS/API</span></button>
+      </div>
+      <div class="server-setup hidden" id="server-setup-fields">
+        <label class="field"><span>Backend URL *</span><input id="backend-url" type="url" inputmode="url" autocomplete="url" placeholder="https://api.example.com"></label>
+        <label class="field"><span>Cloudflare Client ID</span><input id="cf-client-id" autocomplete="off" placeholder="Optional, falls Access Service Auth aktiv ist"></label>
+        <label class="field"><span>Cloudflare Client Secret</span><input id="cf-client-secret" type="password" autocomplete="off" placeholder="Gespeichertes Secret wird nicht angezeigt"></label>
+        <label class="field"><span>Docker-Weboberfläche</span><input id="docker-fallback-url" type="url" inputmode="url" autocomplete="url" placeholder="https://docker-app.example.com"></label>
+        <div class="security-note"><strong>Hinweis:</strong> Ein Service Secret in einer Browser-PWA ist für JavaScript derselben Origin lesbar. Verwende möglichst ein separates, eng berechtigtes und einzeln widerrufbares Token pro Gerät.</div>
+        <button class="primary-button" id="save-server-setup" type="button">Server prüfen & speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="success-dialog">
+    <div class="sheet-card success-card">
+      <button class="sheet-close" id="success-close" type="button" aria-label="Schließen">×</button>
+      <div class="success-seal">✓</div>
+      <span class="eyebrow">Reservierung bestätigt</span>
+      <h2>Dein Termin steht.</h2>
+      <div class="success-details" id="success-details"></div>
+      <div class="button-stack">
+        <button class="primary-button" id="success-appointments" type="button">Meine Termine ansehen</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./config.js" defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>

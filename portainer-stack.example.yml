@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: https://github.com/USER/chez-philipp-docker.git#main
+    container_name: chez-philipp
+    ports:
+      - "8090:8080"
+    volumes:
+      - /home/USER/docker/chez-philipp/data:/app/data
+    environment:
+      APP_TITLE: "Chez Philipp"
+      APP_URL: "https://api.example.com"
+      APP_TIMEZONE: "Europe/Zurich"
+      AUTH_ENABLED: "true"
+      ADMIN_PIN: "${ADMIN_PIN}"
+      SECRET_KEY: "${SECRET_KEY}"
+      BACKUP_KEEP: "50"
+      PWA_ALLOWED_ORIGIN: "https://app.example.com"
+      NOTIFY_ENABLED: "true"
+      NOTIFY_EMAIL: "${NOTIFY_EMAIL}"
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: "587"
+      SMTP_SECURITY: "starttls"
+      SMTP_USER: "${SMTP_USER}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      SMTP_FROM: "${SMTP_USER}"
+      NOTIFY_RETRY_SECONDS: "60"
+      NOTIFY_MAX_ATTEMPTS: "12"
+    restart: unless-stopped
