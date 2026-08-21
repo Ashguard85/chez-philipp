@@ -1,7 +1,7 @@
 'use strict';
 
-const CFG = window.APP_CONFIG || { deployment: 'pages', appName: 'Chez Philipp', version: '6.0.0', defaultApiBase: '', dockerFallbackUrl: '' };
-const APP_VERSION = CFG.version || '6.0.0';
+const CFG = window.APP_CONFIG || { deployment: 'pages', appName: 'Chez Philipp', version: '7.0.0', defaultApiBase: '', dockerFallbackUrl: '' };
+const APP_VERSION = CFG.version || '7.0.0';
 const MODE_KEY = 'chez-philipp-mode';
 const VIEW_KEY = 'chez-philipp-view';
 const DB_NAME = 'chez-philipp-pwa';
@@ -414,6 +414,20 @@ class LocalProvider {
     const stamp = nowIso();
     await idbBulkPut('colors', items.map((item,index) => ({...item,id:item.id || uid(),hex_color:item.hex_color || '#B9B2AA',active:item.active?1:0,sort_order:Number(item.sort_order ?? index*10),created_at:item.created_at || stamp,updated_at:stamp})));
   }
+  async deleteService(id) {
+    const bookings = await idbGetAll('bookings');
+    for (const row of bookings) {
+      if (row.service_id === id) await idbPut('bookings', {...row, service_id:'', updated_at:nowIso()});
+    }
+    await idbDelete('services', id);
+  }
+  async deleteNailColor(id) {
+    const bookings = await idbGetAll('bookings');
+    for (const row of bookings) {
+      if (row.nail_color_id === id) await idbPut('bookings', {...row, nail_color_id:'', updated_at:nowIso()});
+    }
+    await idbDelete('colors', id);
+  }
   async saveOpeningHours(items) { await idbReplaceStore('hours', items.map(x => ({...x,enabled:x.enabled?1:0,slot_interval_min:Number(x.slot_interval_min)||30}))); }
   async saveAvailabilityOverrides(items) { const stamp=nowIso(); await idbReplaceStore('overrides', items.map(x=>({...x,id:x.id||uid(),created_at:x.created_at||stamp,updated_at:stamp}))); }
   async confirmBooking(id) { const row=await idbGet('bookings',id); if(!row||row.status!=='requested') throw new Error('Terminanfrage nicht gefunden.'); const busy=(await idbGetAll('bookings')).filter(b=>b.id!==id&&b.date===row.date&&b.status==='confirmed'); if(busy.some(b=>minutes(row.start_time)<minutes(b.end_time)&&minutes(row.end_time)>minutes(b.start_time))) throw new Error('Der Zeitraum ist inzwischen belegt.'); await idbPut('bookings',{...row,status:'confirmed',updated_at:nowIso()}); }
@@ -423,6 +437,7 @@ class LocalProvider {
     if (!row) return;
     await idbPut('bookings', {...row,status:'cancelled',updated_at:nowIso()});
   }
+  async deleteBooking(id) { await idbDelete('bookings', id); }
   async exportBackup() {
     return {format:'chez-philipp-backup',version:3,exported_at:nowIso(),data:{services:await idbGetAll('services'),nail_colors:await idbGetAll('colors'),opening_hours:await idbGetAll('hours'),availability_overrides:await idbGetAll('overrides'),bookings:await idbGetAll('bookings'),meta:{}}};
   }
@@ -511,19 +526,24 @@ class ServerProvider {
   async getMyBookings() {
     const codes = await getDeviceSetting('bookingCodes', []);
     const results = [];
+    const validCodes = [];
     for (const code of codes.slice(0,40)) {
-      try { const row = await this.getBookingByCode(code); if (row) results.push(row); } catch (e) { if (!results.length) throw e; }
+      try { const row = await this.getBookingByCode(code); if (row) { results.push(row); validCodes.push(code); } } catch (e) { if (!results.length) throw e; }
     }
+    if (validCodes.length !== codes.slice(0,40).length) await setDeviceSetting('bookingCodes', validCodes);
     return results.sort((a,b) => `${b.date}${b.start_time}`.localeCompare(`${a.date}${a.start_time}`));
   }
   async getAdminState() { return this.request('/admin/state',{admin:true}); }
   async saveServices(items) { return this.request('/admin/services',{method:'PUT',body:items,admin:true}); }
+  async deleteService(id) { return this.request(`/admin/services/${encodeURIComponent(id)}`,{method:'DELETE',admin:true}); }
   async saveNailColors(items) { return this.request('/admin/nail-colors',{method:'PUT',body:items,admin:true}); }
+  async deleteNailColor(id) { return this.request(`/admin/nail-colors/${encodeURIComponent(id)}`,{method:'DELETE',admin:true}); }
   async saveOpeningHours(items) { return this.request('/admin/opening-hours',{method:'PUT',body:items,admin:true}); }
   async saveAvailabilityOverrides(items) { return this.request('/admin/availability-overrides',{method:'PUT',body:items,admin:true}); }
   async confirmBooking(id) { return this.request(`/admin/bookings/${encodeURIComponent(id)}/confirm`,{method:'POST',admin:true}); }
   async rejectBooking(id) { return this.request(`/admin/bookings/${encodeURIComponent(id)}/reject`,{method:'POST',admin:true}); }
   async cancelBooking(id) { return this.request(`/admin/bookings/${encodeURIComponent(id)}`,{method:'DELETE',admin:true}); }
+  async deleteBooking(id) { return this.request(`/admin/bookings/${encodeURIComponent(id)}/purge`,{method:'DELETE',admin:true}); }
   async exportBackup() { return this.request('/admin/export',{admin:true}); }
   async previewBackup(payload) { return this.request('/admin/import/preview',{method:'POST',body:payload,admin:true}); }
   async applyBackup(payload,strategy='replace') { return this.request(`/admin/import/apply?strategy=${encodeURIComponent(strategy)}`,{method:'POST',body:payload,admin:true,timeout:20000}); }
@@ -1196,10 +1216,25 @@ function renderAdminServices() {
   root.innerHTML = `<div class="admin-list" id="admin-service-list">${services.map((item,index) => serviceAdminCard(item,index)).join('')}</div>
     <div class="admin-actions"><button class="secondary-button" id="add-service" type="button">Leistung hinzufügen</button><button class="primary-button" id="save-services" type="button">Leistungen speichern</button></div>`;
   $('add-service').addEventListener('click', () => {
-    state.adminState.services.push({id:uid(),name:'Neue Leistung',short_description:'',description:'',price_label:'',duration_min:30,icon:'CP',color_enabled:0,active:1,sort_order:state.adminState.services.length*10+10,created_at:nowIso(),updated_at:nowIso()});
+    state.adminState.services.push({_new:true,id:uid(),name:'Neue Leistung',short_description:'',description:'',price_label:'',duration_min:30,icon:'CP',color_enabled:0,active:1,sort_order:state.adminState.services.length*10+10,created_at:nowIso(),updated_at:nowIso()});
     renderAdminServices();
   });
   $('save-services').addEventListener('click', saveAdminServices);
+  qsa('[data-delete-service]',root).forEach(button => button.addEventListener('click', async () => {
+    const index = Number(button.dataset.serviceIndex);
+    state.adminState.services = collectAdminServices();
+    const item = state.adminState.services[index];
+    if (!item) return;
+    if (!confirm(`Leistung „${item.name || 'Unbenannt'}“ endgültig löschen?\n\nBestehende Termine behalten den damals gespeicherten Leistungsnamen. Diese Aktion kann nicht rückgängig gemacht werden.`)) return;
+    try {
+      if (!item._new) await state.provider.deleteService(item.id);
+      state.adminState.services.splice(index,1);
+      if (state.selectedService?.id === item.id) selectService('');
+      state.services = await state.provider.getServices();
+      renderServices(); renderAdminServices();
+      showToast('Leistung endgültig gelöscht.');
+    } catch (e) { showToast(e.message,'error'); }
+  }));
 }
 
 function serviceAdminCard(item,index) {
@@ -1214,11 +1249,12 @@ function serviceAdminCard(item,index) {
       <label class="field"><span>Dauer (Min.)</span><input data-svc-field="duration_min" type="number" min="5" max="480" step="5" value="${Number(item.duration_min)||30}"></label>
       <label class="toggle-row field-full"><input type="checkbox" data-svc-field="color_enabled" ${Number(item.color_enabled)?'checked':''}> Farbauswahl bei dieser Leistung anzeigen</label>
     </div>
+    <div class="admin-actions destructive-actions"><button class="ghost-button danger-text" data-delete-service="${esc(item.id)}" data-service-index="${index}" type="button">Leistung endgültig löschen</button></div>
   </div>`;
 }
 
-async function saveAdminServices() {
-  const items = qsa('[data-service-admin]').map(card => {
+function collectAdminServices() {
+  return qsa('[data-service-admin]').map(card => {
     const index = Number(card.dataset.serviceAdmin);
     const old = state.adminState.services[index];
     return {...old,
@@ -1233,6 +1269,10 @@ async function saveAdminServices() {
       sort_order:index*10+10
     };
   });
+}
+
+async function saveAdminServices() {
+  const items = collectAdminServices().map(item => { const clean={...item}; delete clean._new; return clean; });
   try {
     await state.provider.saveServices(items);
     state.adminState.services=items;
@@ -1251,17 +1291,34 @@ function renderAdminColors() {
         <label class="field"><span>Name</span><input data-color-field="name" maxlength="100" value="${esc(item.name || '')}"></label>
         <label class="field color-picker-field"><span>Farbton</span><input data-color-field="hex_color" type="color" value="${esc(item.hex_color || '#B9B2AA')}"></label>
       </div>
+      <div class="admin-actions destructive-actions"><button class="ghost-button danger-text" data-delete-color="${esc(item.id)}" data-color-index="${index}" type="button">Farbe endgültig löschen</button></div>
     </div>`).join('')}</div>
     <div class="admin-actions"><button class="secondary-button" id="add-color" type="button">Farbe hinzufügen</button><button class="primary-button" id="save-colors" type="button">Farben speichern</button></div>`;
   $('add-color').addEventListener('click', () => {
-    state.adminState.nail_colors.push({id:uid(),name:'Neue Farbe',hex_color:'#C7B2A6',active:1,sort_order:state.adminState.nail_colors.length*10+10,created_at:nowIso(),updated_at:nowIso()});
+    state.adminState.nail_colors.push({_new:true,id:uid(),name:'Neue Farbe',hex_color:'#C7B2A6',active:1,sort_order:state.adminState.nail_colors.length*10+10,created_at:nowIso(),updated_at:nowIso()});
     renderAdminColors();
   });
   $('save-colors').addEventListener('click', saveAdminColors);
+  qsa('[data-delete-color]',root).forEach(button => button.addEventListener('click', async () => {
+    const index = Number(button.dataset.colorIndex);
+    state.adminState.nail_colors = collectAdminColors();
+    const item = state.adminState.nail_colors[index];
+    if (!item) return;
+    if (!confirm(`Farbe „${item.name || 'Unbenannt'}“ endgültig löschen?\n\nBereits gebuchte Termine behalten den damaligen Farbnamen und Farbton. Diese Aktion kann nicht rückgängig gemacht werden.`)) return;
+    try {
+      if (!item._new) await state.provider.deleteNailColor(item.id);
+      state.adminState.nail_colors.splice(index,1);
+      if (state.selectedColor?.id === item.id) state.selectedColor = null;
+      state.colors = await state.provider.getColors();
+      renderAdminColors();
+      if (state.selectedService) renderColorSelection();
+      showToast('Farbe endgültig gelöscht.');
+    } catch (e) { showToast(e.message,'error'); }
+  }));
 }
 
-async function saveAdminColors() {
-  const items = qsa('[data-color-admin]').map(card => {
+function collectAdminColors() {
+  return qsa('[data-color-admin]').map(card => {
     const index = Number(card.dataset.colorAdmin);
     const old = state.adminState.nail_colors[index];
     return {...old,
@@ -1271,6 +1328,10 @@ async function saveAdminColors() {
       sort_order:index*10+10
     };
   });
+}
+
+async function saveAdminColors() {
+  const items = collectAdminColors().map(item => { const clean={...item}; delete clean._new; return clean; });
   try {
     await state.provider.saveNailColors(items);
     state.adminState.nail_colors=items;
@@ -1298,10 +1359,11 @@ function renderAdminBookings() {
     const requestActions = row.status === 'requested'
       ? `<button class="primary-button compact-action" data-confirm-request="${esc(row.id)}" type="button">Bestätigen</button><button class="ghost-button danger-text" data-reject-request="${esc(row.id)}" type="button">Ablehnen</button>` : '';
     const cancelAction = row.status === 'confirmed' ? `<button class="ghost-button danger-text" data-cancel-booking="${esc(row.id)}" type="button">Termin stornieren</button>` : '';
+    const deleteAction = `<button class="ghost-button danger-text permanent-delete" data-delete-booking="${esc(row.id)}" type="button">Endgültig löschen</button>`;
     return `<div class="admin-card ${['cancelled','rejected'].includes(row.status)?'cancelled':''} ${row.status==='requested'?'request-card':''}">
       <div class="admin-card-head"><h3>${esc(row.service_name)}</h3><span class="version-chip">${esc(row.public_code)}</span></div>
       <div class="booking-admin-meta"><span>${esc(formatDate(row.date))} · ${esc(row.start_time)}–${esc(row.end_time)} Uhr · ${esc(row.price_label||'')}</span>${row.nail_color_name?`<span>Farbe: ${esc(row.nail_color_name)}</span>`:''}${row.notes?`<span>Notiz: ${esc(row.notes)}</span>`:''}<span><strong>Status: ${esc(statusLabel)}</strong></span>${state.mode==='server'?`<span>Benachrichtigung: ${esc(mailStatus)}${Number(row.notification_attempts)>0?` · ${Number(row.notification_attempts)} Versuch${Number(row.notification_attempts)===1?'':'e'}`:''}</span>`:''}</div>
-      ${(requestActions||cancelAction||retry)?`<div class="admin-actions">${requestActions}${cancelAction}${retry}</div>`:''}
+      ${`<div class="admin-actions">${requestActions}${cancelAction}${retry}${deleteAction}</div>`}
     </div>`;
   }).join('') : '<p class="empty-state">Keine Termine oder Anfragen vorhanden.</p>'}</div>`;
   qsa('[data-confirm-request]',root).forEach(button => button.addEventListener('click', async () => {
@@ -1317,6 +1379,11 @@ function renderAdminBookings() {
   qsa('[data-cancel-booking]',root).forEach(button => button.addEventListener('click', async () => {
     if (!confirm('Diesen Termin wirklich stornieren?')) return;
     try { await state.provider.cancelBooking(button.dataset.cancelBooking); await loadAdminState(); showToast('Termin storniert.'); }
+    catch (e) { showToast(e.message,'error'); }
+  }));
+  qsa('[data-delete-booking]',root).forEach(button => button.addEventListener('click', async () => {
+    if (!confirm('Diesen Termin wirklich ENDGÜLTIG löschen?\n\nEr verschwindet aus der Datenbank, dem privaten Kalender-Feed und der Terminübersicht. Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+    try { await state.provider.deleteBooking(button.dataset.deleteBooking); await loadAdminState(); await loadHomeBookingStatus(); showToast('Termin endgültig gelöscht.'); }
     catch (e) { showToast(e.message,'error'); }
   }));
   qsa('[data-retry-notification]',root).forEach(button => button.addEventListener('click', async () => {

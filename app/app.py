@@ -21,7 +21,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 
 from .db import BACKUP_VERSION, backup_database, connect, export_payload, init_db, validate_backup
 
-APP_VERSION = "6.0.0"
+APP_VERSION = "7.0.0"
 DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
 DB_PATH = DATA_DIR / "app.sqlite"
 BACKUPS_DIR = DATA_DIR / "backups"
@@ -709,6 +709,27 @@ def api_admin_services():
     return jsonify({"status": "ok"})
 
 
+@app.delete("/api/admin/services/<service_id>")
+def api_admin_delete_service(service_id):
+    denied = require_admin()
+    if denied:
+        return denied
+    with connect(DB_PATH) as conn:
+        row = conn.execute("SELECT id,name FROM services WHERE id=?", (service_id,)).fetchone()
+        if not row:
+            return json_error("Leistung nicht gefunden", 404)
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            # Historical bookings keep their service_name/price snapshots.
+            conn.execute("UPDATE bookings SET service_id='' WHERE service_id=?", (service_id,))
+            conn.execute("DELETE FROM services WHERE id=?", (service_id,))
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+    return jsonify({"status": "deleted", "id": service_id})
+
+
 @app.put("/api/admin/nail-colors")
 def api_admin_nail_colors():
     denied = require_admin()
@@ -740,6 +761,27 @@ def api_admin_nail_colors():
             conn.execute("ROLLBACK")
             return json_error(str(exc))
     return jsonify({"status": "ok"})
+
+
+@app.delete("/api/admin/nail-colors/<color_id>")
+def api_admin_delete_nail_color(color_id):
+    denied = require_admin()
+    if denied:
+        return denied
+    with connect(DB_PATH) as conn:
+        row = conn.execute("SELECT id,name FROM nail_colors WHERE id=?", (color_id,)).fetchone()
+        if not row:
+            return json_error("Farbe nicht gefunden", 404)
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            # Keep the historical color snapshot, only detach the deleted catalog id.
+            conn.execute("UPDATE bookings SET nail_color_id='' WHERE nail_color_id=?", (color_id,))
+            conn.execute("DELETE FROM nail_colors WHERE id=?", (color_id,))
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+    return jsonify({"status": "deleted", "id": color_id})
 
 
 @app.put("/api/admin/opening-hours")
@@ -859,6 +901,20 @@ def api_admin_delete_booking(booking_id):
         conn.execute("UPDATE bookings SET status=CASE WHEN status='requested' THEN 'rejected' ELSE 'cancelled' END, updated_at=? WHERE id=?", (now_iso(), booking_id))
     # Deliberately no cancellation e-mail: only new bookings notify.
     return jsonify({"status": "ok"})
+
+
+@app.delete("/api/admin/bookings/<booking_id>/purge")
+def api_admin_purge_booking(booking_id):
+    denied = require_admin()
+    if denied:
+        return denied
+    with connect(DB_PATH) as conn:
+        row = conn.execute("SELECT id FROM bookings WHERE id=?", (booking_id,)).fetchone()
+        if not row:
+            return json_error("Termin nicht gefunden", 404)
+        conn.execute("DELETE FROM bookings WHERE id=?", (booking_id,))
+        # notification_outbox is removed by ON DELETE CASCADE.
+    return jsonify({"status": "deleted", "id": booking_id})
 
 
 @app.post("/api/admin/notifications/<booking_id>/retry")

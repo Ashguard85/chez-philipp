@@ -1,10 +1,19 @@
-# Chez Philipp – Docker v6.0.0
+# Chez Philipp – Docker v7.0.0
 
-Chez Philipp ist eine iPhone-first Buchungs-PWA für den privaten Betrieb zuhause. Docker v6.0.0 und Pages v6.0.0 gehören zum selben Release. Das Docker-Paket ist vollständig eigenständig: Flask-Backend, REST-API, SQLite, PWA, Adminbereich, Backup/Restore, Gmail/SMTP-Benachrichtigungen und privater Kalender-Feed laufen in einem Container.
+Chez Philipp ist eine iPhone-first Buchungs-PWA für den privaten Betrieb zuhause. Docker v7.0.0 und Pages v7.0.0 gehören zum selben Release. Das Docker-Paket ist vollständig eigenständig: Flask-Backend, REST-API, SQLite, PWA, Adminbereich, Backup/Restore, Gmail/SMTP-Benachrichtigungen und privater Kalender-Feed laufen in einem Container.
 
-## Neu in v6
+## Neu in v7
 
-v6 stellt die Standard-Verfügbarkeit und den Leistungskatalog auf den privaten Chez-Philipp-Alltag um.
+v7 ergänzt im Adminbereich echte, dauerhafte Löschfunktionen. **Deaktivieren/Stornieren** bleibt weiterhin verfügbar, wenn Daten nur ausgeblendet bzw. historisch markiert werden sollen.
+
+- **Termine/Anfragen endgültig löschen:** entfernt den Datensatz vollständig aus SQLite/IndexedDB. Zugehörige Outbox-Einträge werden auf dem Server ebenfalls entfernt; bestätigte Termine verschwinden dadurch aus dem privaten Kalender-Feed.
+- **Behandlungen endgültig löschen:** entfernt die Behandlung vollständig aus dem Katalog. Bestehende historische Buchungen bleiben lesbar, weil der beim Buchen gespeicherte Name und Preistext erhalten bleiben.
+- **Farben endgültig löschen:** entfernt die Farbe vollständig aus dem Katalog. Historische Buchungen behalten den gespeicherten Farbnamen und Farbwert.
+- Jede dauerhafte Löschung verlangt eine ausdrückliche Bestätigung in der Oberfläche.
+
+## Standard-Freizeit und Leistungen
+
+Die in v6 eingeführten privaten Chez-Philipp-Defaults bleiben unverändert.
 
 ### Standard-Freizeit
 
@@ -32,7 +41,7 @@ Die Dauer einer Leistung muss vollständig in das freie Fenster passen. Eine 30-
 
 Nagel-Leistungen verwenden weiterhin die administrierbare Farbauswahl. 15-Minuten-Leistungen tragen standardmässig den privaten Preistext `1 Küsschen`, 30-Minuten-Leistungen `2 Küsschen`; alles bleibt im Adminbereich editierbar.
 
-Beim Upgrade werden die neuen v6-Defaults nur automatisch übernommen, wenn der alte v5-Standard noch unverändert vorhanden ist. Bereits individuell angepasste Wochenzeiten oder Leistungen werden nicht still überschrieben. Alte Standard-Leistungen, die v6 nicht mehr verwendet, werden bei einem unveränderten v5-Katalog deaktiviert statt gelöscht, damit bestehende Buchungen referenziell intakt bleiben.
+Beim Upgrade werden die v6-Defaults nur automatisch übernommen, wenn der alte v5-Standard noch unverändert vorhanden ist. Bereits individuell angepasste Wochenzeiten oder Leistungen werden nicht still überschrieben. Alte Standard-Leistungen, die v6 nicht mehr verwendet, werden bei einem unveränderten v5-Katalog deaktiviert statt gelöscht, damit bestehende Buchungen referenziell intakt bleiben.
 
 ## Terminwege
 
@@ -130,7 +139,7 @@ Buchungsstatus: `confirmed`, `requested`, `cancelled`, `rejected`.
 
 JSON-Backupformat bleibt v3. v1-, v2- und v3-Backups bleiben importierbar. Vor Datenbankmigrationen und destruktiven Imports wird automatisch ein SQLite-Snapshot unter `/app/data/backups/` angelegt.
 
-v6 verwendet SQLite-Schema 4, weil eine kontrollierte Datenmigration für die neuen Standardzeiten und Standardleistungen hinzukommt. Die Tabellenstruktur der Buchungen bleibt gegenüber v5 unverändert.
+v7 verwendet SQLite-Schema 5. Bei der Migration wird die starre Fremdschlüsselbindung zwischen historischen Buchungen und dem Leistungskatalog gelöst. Die Buchung behält ihre gespeicherten Snapshots, sodass eine Behandlung später wirklich gelöscht werden kann. Vor der Migration wird wie bisher automatisch ein SQLite-Snapshot angelegt. Das JSON-Backupformat bleibt v3.
 
 ## Pages / Local Provider
 
@@ -138,7 +147,7 @@ Die statische Pages-PWA verwendet dieselbe UI-Logik und bietet Server Provider �
 
 ## Offline-App-Shell und Updates
 
-Cache-Version v6: `chez-philipp-pwa-v6`. Die App-Shell enthält HTML, CSS, JavaScript, Manifest, Offline-Seite und lokale Icons. Es gibt keine externen CDN-Abhängigkeiten. Neue Service-Worker-Versionen werden vorbereitet und nicht mitten in einer laufenden Sitzung erzwungen.
+Cache-Version v7: `chez-philipp-pwa-v7`. Die App-Shell enthält HTML, CSS, JavaScript, Manifest, Offline-Seite und lokale Icons. Es gibt keine externen CDN-Abhängigkeiten. Neue Service-Worker-Versionen werden vorbereitet und nicht mitten in einer laufenden Sitzung erzwungen.
 
 ## ZIP-Workflow
 
@@ -146,14 +155,14 @@ Cache-Version v6: `chez-philipp-pwa-v6`. Die App-Shell enthält HTML, CSS, JavaS
 
 ## Versionskompatibilität
 
-- Docker: `6.0.0`
-- Pages: `6.0.0`
-- SQLite Schema: `4`
+- Docker: `7.0.0`
+- Pages: `7.0.0`
+- SQLite Schema: `5`
 - JSON Backup: `3`
 - IndexedDB Datenmigration: `4`
 - IndexedDB Object-Store-Version: `3`
-- Service Worker Cache: `chez-philipp-pwa-v6`
+- Service Worker Cache: `chez-philipp-pwa-v7`
 
 ## Tests / bekannte Einschränkungen
 
-Geprüft werden Python- und JavaScript-Syntax, frische SQLite-Initialisierung, v5→v6-Defaultmigration, unveränderte benutzerdefinierte Werte, Slot-Berechnung, Backupformat, Service Worker, Docker-/Pages-Codegleichheit und ZIP-Struktur. Ein echter Gmail-Versand benötigt reale Zugangsdaten; ein vollständiger iOS-PWA-Lifecycle kann nur auf einem echten iPhone abschliessend geprüft werden.
+Geprüft werden Python- und JavaScript-Syntax, frische SQLite-Initialisierung, v6→v7-Datenbankmigration, Hard-Delete von Termin/Behandlung/Farbe mit Erhalt historischer Snapshots, Slot-Berechnung, Backupformat, Service Worker, Docker-/Pages-Codegleichheit und ZIP-Struktur. Ein echter Gmail-Versand benötigt reale Zugangsdaten; ein vollständiger iOS-PWA-Lifecycle kann nur auf einem echten iPhone abschliessend geprüft werden.

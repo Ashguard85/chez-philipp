@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 BACKUP_VERSION = 3
 
 DEFAULT_SERVICES = [
@@ -199,7 +199,9 @@ def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
     return any(row[1] == column for row in conn.execute(f"PRAGMA table_info({table})").fetchall())
 
 
-def _seed_defaults(conn: sqlite3.Connection) -> None:
+def _seed_defaults(conn: sqlite3.Connection, allow_seed: bool = True) -> None:
+    if not allow_seed:
+        return
     now = datetime.now().isoformat(timespec="seconds")
     if conn.execute("SELECT COUNT(*) FROM services").fetchone()[0] == 0:
         conn.executemany(
@@ -287,6 +289,66 @@ def _migrate_v6_defaults(conn: sqlite3.Connection, existing_version: int) -> Non
         )
 
 
+def _bookings_has_service_fk(conn: sqlite3.Connection) -> bool:
+    if not _table_exists(conn, "bookings"):
+        return False
+    return any(row[2] == "services" and row[3] == "service_id" for row in conn.execute("PRAGMA foreign_key_list(bookings)").fetchall())
+
+
+def _detach_bookings_from_service_catalog(conn: sqlite3.Connection) -> None:
+    """Rebuild bookings without a service FK so catalog entries can be hard-deleted.
+
+    Historical bookings already carry service/color snapshots, so they stay readable
+    even after the catalog entry itself has been permanently removed.
+    """
+    if not _bookings_has_service_fk(conn):
+        return
+    conn.execute("PRAGMA foreign_keys=OFF")
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        conn.execute("ALTER TABLE bookings RENAME TO bookings_before_v7")
+        if _table_exists(conn, "notification_outbox"):
+            conn.execute("ALTER TABLE notification_outbox RENAME TO notification_outbox_before_v7")
+        conn.execute(
+            """CREATE TABLE bookings (
+                id TEXT PRIMARY KEY, public_code TEXT NOT NULL UNIQUE, customer_name TEXT NOT NULL,
+                customer_email TEXT NOT NULL DEFAULT '', customer_phone TEXT NOT NULL DEFAULT '',
+                service_id TEXT NOT NULL DEFAULT '', service_name TEXT NOT NULL, price_label TEXT NOT NULL DEFAULT '',
+                nail_color_id TEXT NOT NULL DEFAULT '', nail_color_name TEXT NOT NULL DEFAULT '', nail_color_hex TEXT NOT NULL DEFAULT '',
+                date TEXT NOT NULL, start_time TEXT NOT NULL, end_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed','requested','cancelled','rejected')),
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            )"""
+        )
+        conn.execute(
+            """INSERT INTO bookings(
+                id,public_code,customer_name,customer_email,customer_phone,service_id,service_name,price_label,
+                nail_color_id,nail_color_name,nail_color_hex,date,start_time,end_time,notes,status,created_at,updated_at
+            )
+            SELECT id,public_code,customer_name,customer_email,customer_phone,service_id,service_name,price_label,
+                   nail_color_id,nail_color_name,nail_color_hex,date,start_time,end_time,notes,status,created_at,updated_at
+            FROM bookings_before_v7"""
+        )
+        conn.execute(
+            """CREATE TABLE notification_outbox (
+                id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, notification_type TEXT NOT NULL DEFAULT 'new_booking',
+                status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','sent','failed')), attempts INTEGER NOT NULL DEFAULT 0,
+                next_attempt_at TEXT NOT NULL, last_error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, sent_at TEXT,
+                UNIQUE(booking_id, notification_type), FOREIGN KEY(booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+            )"""
+        )
+        if _table_exists(conn, "notification_outbox_before_v7"):
+            conn.execute("INSERT INTO notification_outbox SELECT * FROM notification_outbox_before_v7")
+            conn.execute("DROP TABLE notification_outbox_before_v7")
+        conn.execute("DROP TABLE bookings_before_v7")
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+
 def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     backups_dir.mkdir(parents=True, exist_ok=True)
@@ -320,8 +382,7 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
                         nail_color_id TEXT NOT NULL DEFAULT '', nail_color_name TEXT NOT NULL DEFAULT '', nail_color_hex TEXT NOT NULL DEFAULT '',
                         date TEXT NOT NULL, start_time TEXT NOT NULL, end_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '',
                         status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed','requested','cancelled','rejected')),
-                        created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-                        FOREIGN KEY(service_id) REFERENCES services(id) ON UPDATE CASCADE
+                        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
                     )"""
                 )
                 color_id_expr = "nail_color_id" if _column_exists(conn, "bookings_v2", "nail_color_id") else "''"
@@ -354,6 +415,10 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
                 raise
             finally:
                 conn.execute("PRAGMA foreign_keys=ON")
+
+        # v7 decouples historical bookings from the editable service catalog.
+        # This enables true hard-delete for treatments while snapshots keep old bookings readable.
+        _detach_bookings_from_service_catalog(conn)
 
         conn.executescript(
             """
@@ -419,8 +484,7 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
                 notes TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'confirmed' CHECK(status IN ('confirmed','requested','cancelled','rejected')),
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY(service_id) REFERENCES services(id) ON UPDATE CASCADE
+                updated_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS notification_outbox (
                 id TEXT PRIMARY KEY,
@@ -452,7 +516,7 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
             if not _column_exists(conn, "bookings", column):
                 conn.execute(f"ALTER TABLE bookings ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
 
-        _seed_defaults(conn)
+        _seed_defaults(conn, allow_seed=(existing_version == 0))
         _migrate_v6_defaults(conn, existing_version)
         conn.execute(
             "INSERT INTO meta(key,value) VALUES('schema_version',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
