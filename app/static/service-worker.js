@@ -1,5 +1,5 @@
 'use strict';
-const CACHE_VERSION = 'chez-philipp-pwa-v4';
+const CACHE_VERSION = 'chez-philipp-pwa-v6';
 const APP_SHELL = [
   './', './index.html', './app.css', './offline.css', './app.js', './config.js', './manifest.webmanifest', './offline.html',
   './icons/favicon-32.png', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'

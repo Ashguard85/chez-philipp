@@ -45,6 +45,8 @@
           </div>
         </div>
 
+        <button class="home-status-card hidden" id="home-booking-status" type="button" aria-label="Aktuellen Terminstatus öffnen"></button>
+
         <section class="content-section" aria-labelledby="services-title">
           <div class="section-heading">
             <div><span class="eyebrow">01 · Behandlung</span><h2 id="services-title">Was darf es sein?</h2></div>
@@ -120,7 +122,7 @@
         <div class="page-head">
           <span class="eyebrow">Deine Reservierungen</span>
           <h1>Meine Termine</h1>
-          <p>Auf diesem Gerät gespeicherte Buchungscodes werden automatisch angezeigt. Alternativ kannst du einen Code eingeben.</p>
+          <p>Beim Öffnen wird der aktuelle Serverstatus automatisch geladen. Offene Anfragen, bestätigte und abgelehnte Termine sind klar gekennzeichnet. Alternativ kannst du einen Buchungscode eingeben.</p>
         </div>
         <div class="lookup-card">
           <label class="field"><span>Buchungscode</span><input id="booking-code-input" maxlength="20" autocapitalize="characters" placeholder="CP-XXXXXXXX"></label>
@@ -164,7 +166,7 @@
           </section>
 
           <section class="settings-card">
-            <div class="settings-card-head"><div><small>PWA</small><h3>Version & Update</h3></div><span class="version-chip" id="version-chip">v4.0.0</span></div>
+            <div class="settings-card-head"><div><small>PWA</small><h3>Version & Update</h3></div><span class="version-chip" id="version-chip">v6.0.0</span></div>
             <p id="update-status">Die App prüft bei Gelegenheit auf neue Versionen. Updates werden vorbereitet, aber nicht mitten in einer laufenden Eingabe erzwungen.</p>
             <div class="button-row">
               <button class="secondary-button" id="check-update" type="button">Nach Update suchen</button>

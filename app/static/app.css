@@ -383,7 +383,7 @@ main { width: min(980px, 100%); margin: 0 auto; }
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
 
-/* v4 · booking intent and personal availability */
+/* booking intent and personal availability */
 .booking-method-grid { display: grid; gap: 10px; }
 .booking-method { display: grid; gap: 6px; width: 100%; min-height: 92px; padding: 17px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.78); color: var(--ink); text-align: left; cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
 .booking-method strong { font-family: Georgia, serif; font-size: 20px; font-weight: 500; }
@@ -401,3 +401,20 @@ main { width: min(980px, 100%); margin: 0 auto; }
 }
 .date-button.unavailable, .date-button:disabled { opacity: .34; cursor: default; box-shadow: none; }
 .date-button.unavailable strong { color: var(--muted); }
+
+/* v6 · home ritual defaults, 15-minute cadence and calendar status */
+.appointment-title-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.appointment-title-row > strong { flex:0 1 auto; }
+.appointment-status { display:inline-flex !important; align-items:center; width:auto; margin:0 !important; padding:4px 8px; border-radius:999px; font-size:9px !important; font-weight:800; letter-spacing:.035em; text-transform:uppercase; }
+.appointment-status.confirmed { background:#e4eee6; color:#34573c; }
+.appointment-status.requested { background:#f2e8d8; color:#755a2d; }
+.appointment-status.closed { background:#eee8e4; color:#73534b; }
+.calendar-feed-card code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; }
+.calendar-feed-card .field { margin-top:12px; }
+
+.home-status-card { display:grid; gap:4px; width:calc(100% - 36px); margin:16px 18px 0; padding:15px 17px; border:1px solid rgba(70,107,78,.18); border-radius:18px; background:#edf4ee; color:var(--ink); text-align:left; cursor:pointer; }
+.home-status-card.requested { border-color:rgba(139,103,48,.2); background:#f6efe3; }
+.home-status-card strong { font-family:Georgia,serif; font-size:18px; font-weight:500; }
+.home-status-card > span { color:var(--muted); font-size:11px; }
+.home-status-kicker { color:var(--accent-dark) !important; font-size:9px !important; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.home-status-action { margin-top:3px; font-weight:700; }

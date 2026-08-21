@@ -16,6 +16,7 @@ services:
       SECRET_KEY: "${SECRET_KEY}"
       BACKUP_KEEP: "50"
       BOOKING_CUSTOMER_NAME: "Meine Frau"
+      CALENDAR_FEED_TOKEN: "${CALENDAR_FEED_TOKEN}"
       PWA_ALLOWED_ORIGIN: "https://app.example.com"
       NOTIFY_ENABLED: "true"
       NOTIFY_EMAIL: "${NOTIFY_EMAIL}"

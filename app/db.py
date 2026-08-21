@@ -4,81 +4,153 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 BACKUP_VERSION = 3
 
 DEFAULT_SERVICES = [
     {
         "id": "hands",
-        "name": "Signature Manicure",
-        "short_description": "Präzise Hand- und Nagelpflege",
-        "description": "Form, Pflege und ein makelloses Finish – ruhig, sorgfältig und auf deine Wünsche abgestimmt.",
+        "name": "Händchen hübsch",
+        "short_description": "Nägel Hände · klein, fein, frisch",
+        "description": "15 Minuten für Feile, Farbe und das kleine frisch-gemacht-Gefühl.",
         "price_label": "1 Küsschen",
-        "duration_min": 45,
-        "icon": "H",
+        "duration_min": 15,
+        "icon": "HH",
         "color_enabled": 1,
         "active": 1,
         "sort_order": 10,
     },
     {
         "id": "feet",
-        "name": "Signature Pedicure",
-        "short_description": "Entspannende Pflege für deine Füsse",
-        "description": "Ein gepflegtes, entspanntes Finish mit Zeit für Details und einer angenehm ruhigen Behandlung.",
+        "name": "Zehenzauber",
+        "short_description": "Nägel Füsse · kurzer Boxenstopp",
+        "description": "Kurzer Boxenstopp für die Zehen – Farbe drauf, Alltag aus.",
         "price_label": "1 Küsschen",
-        "duration_min": 45,
-        "icon": "F",
+        "duration_min": 15,
+        "icon": "ZZ",
         "color_enabled": 1,
         "active": 1,
         "sort_order": 20,
     },
     {
-        "id": "hands-foot-massage",
-        "name": "Manicure & Foot Ritual",
-        "short_description": "Handpflege mit Fussmassage",
-        "description": "Signature Manicure kombiniert mit einer wohltuenden Fussmassage – für ein besonders entspanntes Erlebnis.",
-        "price_label": "1 Küsschen",
-        "duration_min": 75,
-        "icon": "HF",
+        "id": "hands-feet",
+        "name": "Doppelglanz",
+        "short_description": "Nägel Hände & Füsse · alles in einem",
+        "description": "Hände und Füsse im Doppelpack, damit am Ende einfach alles zusammenpasst.",
+        "price_label": "2 Küsschen",
+        "duration_min": 30,
+        "icon": "DG",
         "color_enabled": 1,
         "active": 1,
         "sort_order": 30,
     },
     {
-        "id": "hands-feet",
-        "name": "Full Care Ritual",
-        "short_description": "Komplettpflege für Hände und Füsse",
-        "description": "Das vollständige Pflegeprogramm mit ausreichend Zeit für Hände, Füsse und ein hochwertiges Finish.",
-        "price_label": "1 Küsschen",
-        "duration_min": 90,
-        "icon": "FC",
+        "id": "footpack-hands",
+        "name": "Päckli & Pfötchen",
+        "short_description": "Fusspackung + Nägel Hände",
+        "description": "Während die Füsse gemütlich eingepackt sind, bekommen die Hände ihren frischen Glanz.",
+        "price_label": "2 Küsschen",
+        "duration_min": 30,
+        "icon": "PP",
         "color_enabled": 1,
         "active": 1,
         "sort_order": 40,
     },
     {
-        "id": "foot-massage",
-        "name": "Foot Massage",
-        "short_description": "Entspannung für müde Füsse",
-        "description": "Eine fokussierte, wohltuende Massage für eine bewusste Pause und spürbare Entspannung.",
-        "price_label": "1 Küsschen",
+        "id": "footpack-feet",
+        "name": "Päckli & Pedi",
+        "short_description": "Fusspackung + Nägel Füsse",
+        "description": "Pflegepackung für die Füsse plus frische Farbe auf den Nägeln – effizient gemütlich.",
+        "price_label": "2 Küsschen",
         "duration_min": 30,
-        "icon": "FM",
-        "color_enabled": 0,
+        "icon": "PF",
+        "color_enabled": 1,
         "active": 1,
         "sort_order": 50,
     },
     {
-        "id": "philipp-exclusive",
-        "name": "Philipp's Private Ritual",
-        "short_description": "Die persönliche Signature-Behandlung",
-        "description": "Die exklusive Behandlung mit Philipp – individuell, persönlich und mit besonderer Aufmerksamkeit.",
+        "id": "footpack",
+        "name": "Füsse im Päckli",
+        "short_description": "Fusspackung · Füsse hoch",
+        "description": "Fusspackung drauf, Füsse hoch und 15 Minuten einfach einmal nichts müssen.",
         "price_label": "1 Küsschen",
-        "duration_min": 60,
-        "icon": "P",
+        "duration_min": 15,
+        "icon": "FP",
         "color_enabled": 0,
         "active": 1,
         "sort_order": 60,
+    },
+    {
+        "id": "foot-massage",
+        "name": "Sohle Mio",
+        "short_description": "Fussmassage · Feierabend für die Füsse",
+        "description": "15 Minuten Kneten gegen müde Füsse – Hausservice mit Lieblingsmensch-Faktor.",
+        "price_label": "1 Küsschen",
+        "duration_min": 15,
+        "icon": "SM",
+        "color_enabled": 0,
+        "active": 1,
+        "sort_order": 70,
+    },
+    {
+        "id": "bubble-bath",
+        "name": "Schaumkrönung",
+        "short_description": "Schaumbad · warm, ruhig, fertig",
+        "description": "30 Minuten warmes Schaumbad – kein Termin, kein Telefon, nur Schaum und Ruhe.",
+        "price_label": "2 Küsschen",
+        "duration_min": 30,
+        "icon": "SK",
+        "color_enabled": 0,
+        "active": 1,
+        "sort_order": 80,
+    },
+    {
+        "id": "hand-massage",
+        "name": "Handkuss",
+        "short_description": "Handmassage · kleine Pause",
+        "description": "Kurze Handmassage für Hände, die heute schon genug getan haben.",
+        "price_label": "1 Küsschen",
+        "duration_min": 15,
+        "icon": "HK",
+        "color_enabled": 0,
+        "active": 1,
+        "sort_order": 90,
+    },
+    {
+        "id": "head-massage",
+        "name": "Kopf aus, Hände an",
+        "short_description": "Kopf- & Schläfenmassage",
+        "description": "15 Minuten Schläfen- und Kopfmassage für den schnellen Feierabend im Kopf.",
+        "price_label": "1 Küsschen",
+        "duration_min": 15,
+        "icon": "KA",
+        "color_enabled": 0,
+        "active": 1,
+        "sort_order": 100,
+    },
+    {
+        "id": "back-massage",
+        "name": "Rücken frei",
+        "short_description": "Rückenmassage · Alltag raus",
+        "description": "30 Minuten Rückenmassage – genau da, wo der Tag noch sitzt.",
+        "price_label": "2 Küsschen",
+        "duration_min": 30,
+        "icon": "RF",
+        "color_enabled": 0,
+        "active": 1,
+        "sort_order": 110,
+    },
+    {
+        "id": "face-mask",
+        "name": "Glow-Zeit",
+        "short_description": "Gesichtsmaske · Ruhemodus an",
+        "description": "Gesichtsmaske und Ruhemodus – 30 Minuten kleine Wellness-Insel zuhause.",
+        "price_label": "2 Küsschen",
+        "duration_min": 30,
+        "icon": "GZ",
+        "color_enabled": 0,
+        "active": 1,
+        "sort_order": 120,
     },
 ]
 
@@ -96,14 +168,15 @@ DEFAULT_NAIL_COLORS = [
 ]
 
 DEFAULT_HOURS = {
-    0: {"enabled": 1, "start_time": "09:00", "end_time": "18:00", "slot_interval_min": 30},
-    1: {"enabled": 1, "start_time": "09:00", "end_time": "18:00", "slot_interval_min": 30},
-    2: {"enabled": 1, "start_time": "09:00", "end_time": "18:00", "slot_interval_min": 30},
-    3: {"enabled": 1, "start_time": "09:00", "end_time": "18:00", "slot_interval_min": 30},
-    4: {"enabled": 1, "start_time": "09:00", "end_time": "18:00", "slot_interval_min": 30},
-    5: {"enabled": 0, "start_time": "09:00", "end_time": "16:00", "slot_interval_min": 30},
-    6: {"enabled": 0, "start_time": "09:00", "end_time": "16:00", "slot_interval_min": 30},
+    0: {"enabled": 1, "start_time": "19:00", "end_time": "22:00", "slot_interval_min": 15},
+    1: {"enabled": 1, "start_time": "19:00", "end_time": "22:00", "slot_interval_min": 15},
+    2: {"enabled": 1, "start_time": "19:00", "end_time": "22:00", "slot_interval_min": 15},
+    3: {"enabled": 1, "start_time": "19:00", "end_time": "22:00", "slot_interval_min": 15},
+    4: {"enabled": 1, "start_time": "19:00", "end_time": "22:00", "slot_interval_min": 15},
+    5: {"enabled": 1, "start_time": "09:00", "end_time": "23:00", "slot_interval_min": 15},
+    6: {"enabled": 1, "start_time": "09:00", "end_time": "23:00", "slot_interval_min": 15},
 }
+
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -145,6 +218,72 @@ def _seed_defaults(conn: sqlite3.Connection) -> None:
             """INSERT INTO nail_colors(id,name,hex_color,active,sort_order,created_at,updated_at)
                VALUES(:id,:name,:hex_color,:active,:sort_order,:created_at,:updated_at)""",
             [{**color, "created_at": now, "updated_at": now} for color in DEFAULT_NAIL_COLORS],
+        )
+
+
+def _migrate_v6_defaults(conn: sqlite3.Connection, existing_version: int) -> None:
+    """Adopt v6 Chez-Philipp defaults only when the old defaults are still untouched.
+
+    Custom services and custom availability remain intact. Known untouched v5 seed
+    services are refreshed/deactivated, while the new catalog entries are inserted.
+    """
+    if not existing_version or existing_version >= 4:
+        return
+
+    now = datetime.now().isoformat(timespec="seconds")
+    old_hours = {
+        0: (1, "09:00", "18:00", 30),
+        1: (1, "09:00", "18:00", 30),
+        2: (1, "09:00", "18:00", 30),
+        3: (1, "09:00", "18:00", 30),
+        4: (1, "09:00", "18:00", 30),
+        5: (0, "09:00", "16:00", 30),
+        6: (0, "09:00", "16:00", 30),
+    }
+    current_hours = {
+        int(r["weekday"]): (int(r["enabled"]), r["start_time"], r["end_time"], int(r["slot_interval_min"]))
+        for r in conn.execute("SELECT * FROM opening_hours ORDER BY weekday").fetchall()
+    }
+    if current_hours == old_hours:
+        for day, values in DEFAULT_HOURS.items():
+            conn.execute(
+                "UPDATE opening_hours SET enabled=?,start_time=?,end_time=?,slot_interval_min=? WHERE weekday=?",
+                (values["enabled"], values["start_time"], values["end_time"], values["slot_interval_min"], day),
+            )
+
+    old_seed = {
+        "hands": ("Signature Manicure", 45),
+        "feet": ("Signature Pedicure", 45),
+        "hands-foot-massage": ("Manicure & Foot Ritual", 75),
+        "hands-feet": ("Full Care Ritual", 90),
+        "foot-massage": ("Foot Massage", 30),
+        "philipp-exclusive": ("Philipp's Private Ritual", 60),
+    }
+    new_by_id = {item["id"]: item for item in DEFAULT_SERVICES}
+
+    for service_id, (old_name, old_duration) in old_seed.items():
+        row = conn.execute("SELECT name,duration_min FROM services WHERE id=?", (service_id,)).fetchone()
+        if not row or row["name"] != old_name or int(row["duration_min"]) != old_duration:
+            continue
+        replacement = new_by_id.get(service_id)
+        if replacement:
+            conn.execute(
+                """UPDATE services SET name=?,short_description=?,description=?,price_label=?,duration_min=?,icon=?,
+                   color_enabled=?,active=?,sort_order=?,updated_at=? WHERE id=?""",
+                (replacement["name"], replacement["short_description"], replacement["description"],
+                 replacement["price_label"], replacement["duration_min"], replacement["icon"],
+                 replacement["color_enabled"], replacement["active"], replacement["sort_order"], now, service_id),
+            )
+        else:
+            conn.execute("UPDATE services SET active=0,updated_at=? WHERE id=?", (now, service_id))
+
+    for service in DEFAULT_SERVICES:
+        conn.execute(
+            """INSERT INTO services
+            (id,name,short_description,description,price_label,duration_min,icon,color_enabled,active,sort_order,created_at,updated_at)
+            VALUES (:id,:name,:short_description,:description,:price_label,:duration_min,:icon,:color_enabled,:active,:sort_order,:created_at,:updated_at)
+            ON CONFLICT(id) DO NOTHING""",
+            {**service, "created_at": now, "updated_at": now},
         )
 
 
@@ -314,6 +453,7 @@ def init_db(db_path: Path, backups_dir: Path, backup_keep: int) -> None:
                 conn.execute(f"ALTER TABLE bookings ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
 
         _seed_defaults(conn)
+        _migrate_v6_defaults(conn, existing_version)
         conn.execute(
             "INSERT INTO meta(key,value) VALUES('schema_version',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (str(SCHEMA_VERSION),),

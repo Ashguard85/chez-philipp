@@ -1,7 +1,7 @@
 'use strict';
 
-const CFG = window.APP_CONFIG || { deployment: 'pages', appName: 'Chez Philipp', version: '4.0.0', defaultApiBase: '', dockerFallbackUrl: '' };
-const APP_VERSION = CFG.version || '4.0.0';
+const CFG = window.APP_CONFIG || { deployment: 'pages', appName: 'Chez Philipp', version: '6.0.0', defaultApiBase: '', dockerFallbackUrl: '' };
+const APP_VERSION = CFG.version || '6.0.0';
 const MODE_KEY = 'chez-philipp-mode';
 const VIEW_KEY = 'chez-philipp-view';
 const DB_NAME = 'chez-philipp-pwa';
@@ -10,12 +10,18 @@ const WEEKDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag
 const MONTHS = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 
 const DEFAULT_SERVICES = [
-  {id:'hands',name:'Signature Manicure',short_description:'Präzise Hand- und Nagelpflege',description:'Form, Pflege und ein makelloses Finish – ruhig, sorgfältig und auf deine Wünsche abgestimmt.',price_label:'1 Küsschen',duration_min:45,icon:'H',color_enabled:1,active:1,sort_order:10},
-  {id:'feet',name:'Signature Pedicure',short_description:'Entspannende Pflege für deine Füsse',description:'Ein gepflegtes, entspanntes Finish mit Zeit für Details und einer angenehm ruhigen Behandlung.',price_label:'1 Küsschen',duration_min:45,icon:'F',color_enabled:1,active:1,sort_order:20},
-  {id:'hands-foot-massage',name:'Manicure & Foot Ritual',short_description:'Handpflege mit Fussmassage',description:'Signature Manicure kombiniert mit einer wohltuenden Fussmassage – für ein besonders entspanntes Erlebnis.',price_label:'1 Küsschen',duration_min:75,icon:'HF',color_enabled:1,active:1,sort_order:30},
-  {id:'hands-feet',name:'Full Care Ritual',short_description:'Komplettpflege für Hände und Füsse',description:'Das vollständige Pflegeprogramm mit ausreichend Zeit für Hände, Füsse und ein hochwertiges Finish.',price_label:'1 Küsschen',duration_min:90,icon:'FC',color_enabled:1,active:1,sort_order:40},
-  {id:'foot-massage',name:'Foot Massage',short_description:'Entspannung für müde Füsse',description:'Eine fokussierte, wohltuende Massage für eine bewusste Pause und spürbare Entspannung.',price_label:'1 Küsschen',duration_min:30,icon:'FM',color_enabled:0,active:1,sort_order:50},
-  {id:'philipp-exclusive',name:"Philipp's Private Ritual",short_description:'Die persönliche Signature-Behandlung',description:'Die exklusive Behandlung mit Philipp – individuell, persönlich und mit besonderer Aufmerksamkeit.',price_label:'1 Küsschen',duration_min:60,icon:'P',color_enabled:0,active:1,sort_order:60}
+  {id:'hands',name:'Händchen hübsch',short_description:'Nägel Hände · klein, fein, frisch',description:'15 Minuten für Feile, Farbe und das kleine frisch-gemacht-Gefühl.',price_label:'1 Küsschen',duration_min:15,icon:'HH',color_enabled:1,active:1,sort_order:10},
+  {id:'feet',name:'Zehenzauber',short_description:'Nägel Füsse · kurzer Boxenstopp',description:'Kurzer Boxenstopp für die Zehen – Farbe drauf, Alltag aus.',price_label:'1 Küsschen',duration_min:15,icon:'ZZ',color_enabled:1,active:1,sort_order:20},
+  {id:'hands-feet',name:'Doppelglanz',short_description:'Nägel Hände & Füsse · alles in einem',description:'Hände und Füsse im Doppelpack, damit am Ende einfach alles zusammenpasst.',price_label:'2 Küsschen',duration_min:30,icon:'DG',color_enabled:1,active:1,sort_order:30},
+  {id:'footpack-hands',name:'Päckli & Pfötchen',short_description:'Fusspackung + Nägel Hände',description:'Während die Füsse gemütlich eingepackt sind, bekommen die Hände ihren frischen Glanz.',price_label:'2 Küsschen',duration_min:30,icon:'PP',color_enabled:1,active:1,sort_order:40},
+  {id:'footpack-feet',name:'Päckli & Pedi',short_description:'Fusspackung + Nägel Füsse',description:'Pflegepackung für die Füsse plus frische Farbe auf den Nägeln – effizient gemütlich.',price_label:'2 Küsschen',duration_min:30,icon:'PF',color_enabled:1,active:1,sort_order:50},
+  {id:'footpack',name:'Füsse im Päckli',short_description:'Fusspackung · Füsse hoch',description:'Fusspackung drauf, Füsse hoch und 15 Minuten einfach einmal nichts müssen.',price_label:'1 Küsschen',duration_min:15,icon:'FP',color_enabled:0,active:1,sort_order:60},
+  {id:'foot-massage',name:'Sohle Mio',short_description:'Fussmassage · Feierabend für die Füsse',description:'15 Minuten Kneten gegen müde Füsse – Hausservice mit Lieblingsmensch-Faktor.',price_label:'1 Küsschen',duration_min:15,icon:'SM',color_enabled:0,active:1,sort_order:70},
+  {id:'bubble-bath',name:'Schaumkrönung',short_description:'Schaumbad · warm, ruhig, fertig',description:'30 Minuten warmes Schaumbad – kein Termin, kein Telefon, nur Schaum und Ruhe.',price_label:'2 Küsschen',duration_min:30,icon:'SK',color_enabled:0,active:1,sort_order:80},
+  {id:'hand-massage',name:'Handkuss',short_description:'Handmassage · kleine Pause',description:'Kurze Handmassage für Hände, die heute schon genug getan haben.',price_label:'1 Küsschen',duration_min:15,icon:'HK',color_enabled:0,active:1,sort_order:90},
+  {id:'head-massage',name:'Kopf aus, Hände an',short_description:'Kopf- & Schläfenmassage',description:'15 Minuten Schläfen- und Kopfmassage für den schnellen Feierabend im Kopf.',price_label:'1 Küsschen',duration_min:15,icon:'KA',color_enabled:0,active:1,sort_order:100},
+  {id:'back-massage',name:'Rücken frei',short_description:'Rückenmassage · Alltag raus',description:'30 Minuten Rückenmassage – genau da, wo der Tag noch sitzt.',price_label:'2 Küsschen',duration_min:30,icon:'RF',color_enabled:0,active:1,sort_order:110},
+  {id:'face-mask',name:'Glow-Zeit',short_description:'Gesichtsmaske · Ruhemodus an',description:'Gesichtsmaske und Ruhemodus – 30 Minuten kleine Wellness-Insel zuhause.',price_label:'2 Küsschen',duration_min:30,icon:'GZ',color_enabled:0,active:1,sort_order:120}
 ];
 
 const DEFAULT_NAIL_COLORS = [
@@ -31,14 +37,15 @@ const DEFAULT_NAIL_COLORS = [
   {id:'decide-later',name:'Vor Ort entscheiden',hex_color:'#B9B2AA',active:1,sort_order:100}
 ];
 const DEFAULT_HOURS = [
-  {weekday:0,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
-  {weekday:1,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
-  {weekday:2,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
-  {weekday:3,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
-  {weekday:4,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
-  {weekday:5,enabled:0,start_time:'09:00',end_time:'16:00',slot_interval_min:30},
-  {weekday:6,enabled:0,start_time:'09:00',end_time:'16:00',slot_interval_min:30}
+  {weekday:0,enabled:1,start_time:'19:00',end_time:'22:00',slot_interval_min:15},
+  {weekday:1,enabled:1,start_time:'19:00',end_time:'22:00',slot_interval_min:15},
+  {weekday:2,enabled:1,start_time:'19:00',end_time:'22:00',slot_interval_min:15},
+  {weekday:3,enabled:1,start_time:'19:00',end_time:'22:00',slot_interval_min:15},
+  {weekday:4,enabled:1,start_time:'19:00',end_time:'22:00',slot_interval_min:15},
+  {weekday:5,enabled:1,start_time:'09:00',end_time:'23:00',slot_interval_min:15},
+  {weekday:6,enabled:1,start_time:'09:00',end_time:'23:00',slot_interval_min:15}
 ];
+
 
 const state = {
   mode: null,
@@ -210,14 +217,14 @@ async function ensureLocalSeed() {
     await idbBulkPut('colors', DEFAULT_NAIL_COLORS.map(x => ({...x, created_at: stamp, updated_at: stamp})));
     await idbBulkPut('hours', DEFAULT_HOURS);
     await idbPut('meta', {key:'seeded', value:true});
-    await idbPut('meta', {key:'schema_version', value:3});
+    await idbPut('meta', {key:'schema_version', value:4});
     return;
   }
   if (Number(versionRow?.value || 1) < 2) {
     const services = await idbGetAll('services');
     await idbBulkPut('services', services.map(item => ({
       ...item,
-      color_enabled: item.color_enabled === undefined ? (['hands','feet','hands-foot-massage','hands-feet'].includes(item.id) ? 1 : 0) : Number(item.color_enabled),
+      color_enabled: item.color_enabled === undefined ? (['hands','feet','hands-foot-massage','hands-feet','footpack-hands','footpack-feet'].includes(item.id) ? 1 : 0) : Number(item.color_enabled),
       updated_at: item.updated_at || stamp
     })));
     if (!(await idbGetAll('colors')).length) {
@@ -227,6 +234,44 @@ async function ensureLocalSeed() {
   }
   if (Number((await idbGet('meta', 'schema_version'))?.value || 1) < 3) {
     await idbPut('meta', {key:'schema_version', value:3});
+  }
+  if (Number((await idbGet('meta', 'schema_version'))?.value || 1) < 4) {
+    const oldHours = [
+      {weekday:0,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
+      {weekday:1,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
+      {weekday:2,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
+      {weekday:3,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
+      {weekday:4,enabled:1,start_time:'09:00',end_time:'18:00',slot_interval_min:30},
+      {weekday:5,enabled:0,start_time:'09:00',end_time:'16:00',slot_interval_min:30},
+      {weekday:6,enabled:0,start_time:'09:00',end_time:'16:00',slot_interval_min:30}
+    ];
+    const currentHours = (await idbGetAll('hours')).sort((a,b)=>a.weekday-b.weekday);
+    const sameHours = JSON.stringify(currentHours.map(x=>({weekday:Number(x.weekday),enabled:Number(x.enabled),start_time:x.start_time,end_time:x.end_time,slot_interval_min:Number(x.slot_interval_min)}))) === JSON.stringify(oldHours);
+    if (sameHours) await idbReplaceStore('hours', DEFAULT_HOURS);
+
+    const oldSeed = new Map([
+      ['hands',['Signature Manicure',45]],
+      ['feet',['Signature Pedicure',45]],
+      ['hands-foot-massage',['Manicure & Foot Ritual',75]],
+      ['hands-feet',['Full Care Ritual',90]],
+      ['foot-massage',['Foot Massage',30]],
+      ['philipp-exclusive',["Philipp's Private Ritual",60]]
+    ]);
+    const currentServices = await idbGetAll('services');
+    const byId = new Map(currentServices.map(item=>[item.id,item]));
+    const nextServices = [...currentServices];
+    for (const [id,[oldName,oldDuration]] of oldSeed.entries()) {
+      const row = byId.get(id);
+      if (!row || row.name !== oldName || Number(row.duration_min) !== oldDuration) continue;
+      const replacement = DEFAULT_SERVICES.find(item=>item.id===id);
+      const idx = nextServices.findIndex(item=>item.id===id);
+      if (replacement && idx >= 0) nextServices[idx] = {...row,...replacement,updated_at:stamp};
+      else if (idx >= 0) nextServices[idx] = {...row,active:0,updated_at:stamp};
+    }
+    const nextIds = new Set(nextServices.map(item=>item.id));
+    for (const item of DEFAULT_SERVICES) if (!nextIds.has(item.id)) nextServices.push({...item,created_at:stamp,updated_at:stamp});
+    await idbReplaceStore('services', nextServices);
+    await idbPut('meta', {key:'schema_version', value:4});
   }
 }
 
@@ -386,7 +431,7 @@ class LocalProvider {
     const counts = validateBackupClient(payload);
     const safety = await this.exportBackup();
     await downloadJson(safety, `chez-philipp-local-before-restore-${localDateString(new Date())}.json`, false);
-    const normalizedServices = (payload.data.services || []).map(item => ({...item,color_enabled:item.color_enabled === undefined ? (['hands','feet','hands-foot-massage','hands-feet'].includes(item.id) ? 1 : 0) : Number(item.color_enabled)}));
+    const normalizedServices = (payload.data.services || []).map(item => ({...item,color_enabled:item.color_enabled === undefined ? (['hands','feet','hands-foot-massage','hands-feet','footpack-hands','footpack-feet'].includes(item.id) ? 1 : 0) : Number(item.color_enabled)}));
     if (strategy === 'replace') {
       await idbReplaceStore('bookings', payload.data.bookings || []);
       await idbReplaceStore('hours', payload.data.opening_hours || []);
@@ -549,6 +594,7 @@ function goView(name) {
   qsa('.nav-button').forEach(el => el.classList.toggle('active', el.dataset.nav === name));
   if (name !== 'admin') localStorage.setItem(VIEW_KEY, name);
   if (name === 'appointments') loadAppointments();
+  if (name === 'book') loadHomeBookingStatus();
   if (name === 'more') refreshModeUi();
   window.scrollTo({top:0,behavior:'instant'});
 }
@@ -835,6 +881,25 @@ function resetBookingFlow() {
   state.dirty = false;
 }
 
+async function loadHomeBookingStatus() {
+  const card = $('home-booking-status');
+  if (!card || !state.provider) return;
+  try {
+    const rows = await state.provider.getMyBookings();
+    const today = localDateString(new Date());
+    const openRequest = rows.filter(row => row.status === 'requested').sort((a,b) => `${a.date}${a.start_time}`.localeCompare(`${b.date}${b.start_time}`))[0];
+    const confirmed = rows.filter(row => row.status === 'confirmed' && row.date >= today).sort((a,b) => `${a.date}${a.start_time}`.localeCompare(`${b.date}${b.start_time}`))[0];
+    const row = openRequest || confirmed;
+    if (!row) { card.classList.add('hidden'); card.innerHTML=''; return; }
+    const requested = row.status === 'requested';
+    card.innerHTML = `<span class="home-status-kicker">${requested?'Offene Terminanfrage':'Nächster Termin'}</span><strong>${esc(formatDate(row.date,false))} · ${esc(row.start_time)} Uhr</strong><span>${esc(row.service_name)}${row.nail_color_name?` · ${esc(row.nail_color_name)}`:''}</span><span class="home-status-action">${requested?'Status wird beim Öffnen automatisch aktualisiert':'Verbindlich bestätigt'} · Details ansehen →</span>`;
+    card.classList.toggle('requested', requested);
+    card.classList.remove('hidden');
+  } catch {
+    card.classList.add('hidden');
+  }
+}
+
 async function loadAppointments(extraCode='') {
   if (!state.provider) return;
   const list = $('appointment-list');
@@ -855,10 +920,11 @@ async function loadAppointments(extraCode='') {
 
 function appointmentCard(row) {
   const d = parseLocalDate(row.date);
-  const statusLabel = row.status === 'requested' ? 'Anfrage offen' : row.status === 'rejected' ? 'abgelehnt' : row.status === 'cancelled' ? 'storniert' : 'bestätigt';
-  return `<article class="appointment-card ${['cancelled','rejected'].includes(row.status)?'cancelled':''}">
+  const statusLabel = row.status === 'requested' ? 'Anfrage offen' : row.status === 'rejected' ? 'Abgelehnt' : row.status === 'cancelled' ? 'Storniert' : 'Bestätigt';
+  const statusClass = row.status === 'requested' ? 'requested' : row.status === 'confirmed' ? 'confirmed' : 'closed';
+  return `<article class="appointment-card ${['cancelled','rejected'].includes(row.status)?'cancelled':''} ${row.status==='requested'?'request-card':''}">
     <div class="appointment-date"><small>${MONTHS[d.getMonth()]}</small><strong>${d.getDate()}</strong></div>
-    <div class="appointment-main"><strong>${esc(row.service_name)}</strong><span>${esc(formatDate(row.date,false))} · ${esc(row.start_time)}–${esc(row.end_time)} Uhr${row.nail_color_name?` · ${esc(row.nail_color_name)}`:''} · ${esc(statusLabel)}</span></div>
+    <div class="appointment-main"><div class="appointment-title-row"><strong>${esc(row.service_name)}</strong><span class="appointment-status ${statusClass}">${esc(statusLabel)}</span></div><span>${esc(formatDate(row.date,false))} · ${esc(row.start_time)}–${esc(row.end_time)} Uhr${row.nail_color_name?` · ${esc(row.nail_color_name)}`:''}</span></div>
     <div class="appointment-code">${esc(row.public_code)}</div>
   </article>`;
 }
@@ -1219,9 +1285,12 @@ function renderAdminBookings() {
   const root = $('admin-tab-bookings');
   const rows = state.adminState?.bookings || [];
   const mailInfo = state.mode === 'server'
-    ? `<div class="settings-card notification-card"><div class="settings-card-head"><div><small>Benachrichtigung</small><h3>E-Mail bei Buchung & Anfrage</h3></div><span class="status-dot ${state.adminState?.notification_enabled?'ok':'bad'}"></span></div><p>${state.adminState?.notification_enabled?'Aktiv. Verbindliche Buchungen und freie Terminanfragen werden persistent in der Outbox erfasst. Buchungen enthalten den ICS-Anhang; Anfragen bewusst noch nicht.':'Nicht vollständig konfiguriert oder deaktiviert. Prüfe die SMTP-/NOTIFY-Environment-Variablen.'}</p></div>`
+    ? `<div class="settings-card notification-card"><div class="settings-card-head"><div><small>Benachrichtigung</small><h3>E-Mail bei Buchung & Anfrage</h3></div><span class="status-dot ${state.adminState?.notification_enabled?'ok':'bad'}"></span></div><p>${state.adminState?.notification_enabled?'Aktiv. Buchungen und freie Terminanfragen werden persistent in der Outbox erfasst und enthalten jeweils einen ICS-Anhang. Anfragen sind darin als vorläufig markiert.':'Nicht vollständig konfiguriert oder deaktiviert. Prüfe die SMTP-/NOTIFY-Environment-Variablen.'}</p></div>`
     : `<div class="security-note"><strong>Lokaler Modus:</strong> Lokale Buchungen und Anfragen bleiben auf diesem Gerät und lösen keine E-Mail an Philipp aus.</div>`;
-  root.innerHTML = `${mailInfo}<div class="admin-list admin-booking-list">${rows.length ? rows.map(row => {
+  const feedInfo = state.mode === 'server'
+    ? `<div class="settings-card calendar-feed-card"><div class="settings-card-head"><div><small>Apple Kalender</small><h3>Privater Kalender-Feed</h3></div><span class="status-dot ${state.adminState?.calendar_feed_enabled?'ok':'bad'}"></span></div>${state.adminState?.calendar_feed_enabled?`<p>Enthält ausschließlich bestätigte Termine. Diese URL einmal als abonnierten Kalender auf dem iPhone hinzufügen.</p><label class="field"><span>Abonnement-URL</span><input readonly value="${esc(state.adminState.calendar_feed_url || '')}"></label>`:'<p>Noch nicht aktiv. Setze <code>CALENDAR_FEED_TOKEN</code> in Portainer und deploye den Stack neu.</p>'}</div>`
+    : '';
+  root.innerHTML = `${mailInfo}${feedInfo}<div class="admin-list admin-booking-list">${rows.length ? rows.map(row => {
     const mailStatus = row.notification_status === 'sent' ? 'Mail gesendet' : row.notification_status === 'failed' ? 'Mail-Zustellung fehlgeschlagen' : row.notification_status === 'pending' ? 'Mail ausstehend' : 'Keine Mail eingeplant';
     const retry = state.mode === 'server' && state.adminState?.notification_enabled && row.notification_status && row.notification_status !== 'sent'
       ? `<button class="ghost-button" data-retry-notification="${esc(row.id)}" type="button">Mail erneut versuchen</button>` : '';
@@ -1334,6 +1403,7 @@ async function registerServiceWorker() {
 function bindEvents() {
   qsa('[data-nav]').forEach(button => button.addEventListener('click', () => goView(button.dataset.nav)));
   $('brand-home').addEventListener('click', () => goView('book'));
+  $('home-booking-status').addEventListener('click', () => goView('appointments'));
   $('open-more').addEventListener('click', () => goView('more'));
   $('choose-book-slot').addEventListener('click', () => chooseBookingIntent('book'));
   $('choose-request-slot').addEventListener('click', () => chooseBookingIntent('request'));

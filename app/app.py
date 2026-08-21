@@ -21,7 +21,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 
 from .db import BACKUP_VERSION, backup_database, connect, export_payload, init_db, validate_backup
 
-APP_VERSION = "4.0.0"
+APP_VERSION = "6.0.0"
 DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
 DB_PATH = DATA_DIR / "app.sqlite"
 BACKUPS_DIR = DATA_DIR / "backups"
@@ -46,6 +46,7 @@ SMTP_TIMEOUT = max(3, min(60, int(os.getenv("SMTP_TIMEOUT", "12"))))
 NOTIFY_RETRY_SECONDS = max(15, int(os.getenv("NOTIFY_RETRY_SECONDS", "60")))
 NOTIFY_MAX_ATTEMPTS = max(1, min(100, int(os.getenv("NOTIFY_MAX_ATTEMPTS", "12"))))
 BOOKING_CUSTOMER_NAME = (os.getenv("BOOKING_CUSTOMER_NAME", "Meine Frau").strip() or "Meine Frau")[:120]
+CALENDAR_FEED_TOKEN = os.getenv("CALENDAR_FEED_TOKEN", "").strip()
 
 try:
     TZ = ZoneInfo(APP_TIMEZONE)
@@ -200,7 +201,7 @@ def _mail_body(booking: dict) -> str:
     if booking.get("notes"):
         lines.extend(["", f"Notiz: {booking['notes']}"])
     if requested:
-        lines.extend(["", "Diese Uhrzeit wurde frei angefragt und ist noch nicht bestätigt."])
+        lines.extend(["", "Diese Uhrzeit wurde frei angefragt und ist noch nicht bestätigt.", "Die Wunschzeit ist als vorläufige Kalenderdatei (.ics) angehängt."])
     else:
         lines.extend(["", "Der Termin ist als Kalenderdatei (.ics) angehängt."])
     return "\n".join(lines)
@@ -234,7 +235,7 @@ def _mail_html(booking: dict) -> str:
 <tr><td style="padding:7px 0;color:#746b61">Buchungscode</td><td style="padding:7px 0;font-weight:600;color:#211d19">{esc(booking['public_code'])}</td></tr>
 </table>
 {notes}
-<div style="margin-top:20px;font-size:13px;line-height:1.5;color:#746b61">{"Diese Uhrzeit wurde frei angefragt und ist noch nicht bestätigt." if (booking.get("notification_type") == "new_request" or booking.get("status") == "requested") else "Der Termin ist als <strong>.ics-Datei</strong> angehängt und kann direkt in den Kalender übernommen werden."}</div>
+<div style="margin-top:20px;font-size:13px;line-height:1.5;color:#746b61">{"Diese Uhrzeit wurde frei angefragt und ist noch nicht bestätigt. Die angehängte <strong>.ics-Datei</strong> ist deshalb als vorläufiger Termin gekennzeichnet." if (booking.get("notification_type") == "new_request" or booking.get("status") == "requested") else "Der Termin ist als <strong>.ics-Datei</strong> angehängt und kann direkt in den Kalender übernommen werden."}</div>
 </td></tr></table>
 </td></tr></table>
 </body></html>'''
@@ -244,38 +245,71 @@ def _ics_escape(value: str) -> str:
     return str(value or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r\n", "\\n").replace("\n", "\\n")
 
 
-def _booking_ics(booking: dict) -> bytes:
+def _booking_event_lines(booking: dict, force_confirmed: bool = False) -> list[str]:
     local_start = datetime.strptime(f"{booking['date']} {booking['start_time']}", "%Y-%m-%d %H:%M").replace(tzinfo=TZ)
     local_end = datetime.strptime(f"{booking['date']} {booking['end_time']}", "%Y-%m-%d %H:%M").replace(tzinfo=TZ)
     if local_end <= local_start:
         local_end += timedelta(days=1)
     start_utc = local_start.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     end_utc = local_end.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    updated_raw = booking.get("updated_at") or booking.get("created_at")
+    try:
+        updated = datetime.fromisoformat(str(updated_raw)).astimezone(timezone.utc) if updated_raw else datetime.now(timezone.utc)
+    except (ValueError, TypeError):
+        updated = datetime.now(timezone.utc)
+    stamp = updated.strftime("%Y%m%dT%H%M%SZ")
+    requested = not force_confirmed and (booking.get("notification_type") == "new_request" or booking.get("status") == "requested")
     description = f"Buchungscode: {booking['public_code']}"
+    if requested:
+        description += "\nStatus: Terminanfrage – noch nicht bestätigt"
     if booking.get("nail_color_name"):
         description += f"\nFarbe: {booking['nail_color_name']}"
     if booking.get("notes"):
         description += f"\nNotiz: {booking['notes']}"
     uid_base = str(booking.get("id") or booking["public_code"]).replace("@", "-")
+    summary = ("Chez Philipp · Anfrage · " if requested else "Chez Philipp · ") + booking["service_name"]
+    return [
+        "BEGIN:VEVENT",
+        f"UID:{_ics_escape(uid_base)}@chez-philipp.local",
+        f"DTSTAMP:{stamp}",
+        f"LAST-MODIFIED:{stamp}",
+        f"DTSTART:{start_utc}",
+        f"DTEND:{end_utc}",
+        f"SUMMARY:{_ics_escape(summary)}",
+        f"DESCRIPTION:{_ics_escape(description)}",
+        "STATUS:TENTATIVE" if requested else "STATUS:CONFIRMED",
+        "TRANSP:TRANSPARENT" if requested else "TRANSP:OPAQUE",
+        "END:VEVENT",
+    ]
+
+
+def _booking_ics(booking: dict) -> bytes:
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
         "PRODID:-//Chez Philipp//Booking//DE",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        "BEGIN:VEVENT",
-        f"UID:{_ics_escape(uid_base)}@chez-philipp.local",
-        f"DTSTAMP:{stamp}",
-        f"DTSTART:{start_utc}",
-        f"DTEND:{end_utc}",
-        f"SUMMARY:{_ics_escape('Chez Philipp · ' + booking['service_name'])}",
-        f"DESCRIPTION:{_ics_escape(description)}",
-        "STATUS:CONFIRMED",
-        "END:VEVENT",
+        *_booking_event_lines(booking),
         "END:VCALENDAR",
         "",
     ]
+    return "\r\n".join(lines).encode("utf-8")
+
+
+def _calendar_feed_ics(bookings: list[dict]) -> bytes:
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Chez Philipp//Calendar Feed//DE",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Chez Philipp",
+        f"X-WR-TIMEZONE:{_ics_escape(APP_TIMEZONE)}",
+    ]
+    for booking in bookings:
+        lines.extend(_booking_event_lines(booking, force_confirmed=True))
+    lines.extend(["END:VCALENDAR", ""])
     return "\r\n".join(lines).encode("utf-8")
 
 
@@ -297,14 +331,13 @@ def send_booking_notification(booking: dict) -> None:
     msg["Subject"] = f"{subject_prefix} · {booking['date']} {booking['start_time']} · {booking['service_name']}"
     msg.set_content(_mail_body(booking))
     msg.add_alternative(_mail_html(booking), subtype="html")
-    if not requested:
-        msg.add_attachment(
-            _booking_ics(booking),
-            maintype="text",
-            subtype="calendar",
-            filename=f"chez-philipp-{booking['date']}-{booking['start_time'].replace(':', '')}.ics",
-            params={"method": "PUBLISH", "charset": "UTF-8"},
-        )
+    msg.add_attachment(
+        _booking_ics(booking),
+        maintype="text",
+        subtype="calendar",
+        filename=f"chez-philipp-{booking['date']}-{booking['start_time'].replace(':', '')}{'-anfrage' if requested else ''}.ics",
+        params={"method": "PUBLISH", "charset": "UTF-8"},
+    )
 
     context = ssl.create_default_context()
     if SMTP_SECURITY == "ssl":
@@ -623,6 +656,7 @@ def api_admin_state():
                  ON n.booking_id=b.id
                ORDER BY b.date DESC,b.start_time DESC LIMIT 500"""
         )]
+    feed_base = APP_URL or request.host_url.rstrip("/")
     return jsonify({
         "services": services,
         "nail_colors": colors,
@@ -630,6 +664,8 @@ def api_admin_state():
         "availability_overrides": overrides,
         "bookings": bookings,
         "notification_enabled": notification_configured(),
+        "calendar_feed_enabled": bool(CALENDAR_FEED_TOKEN),
+        "calendar_feed_url": f"{feed_base}/calendar.ics?token={CALENDAR_FEED_TOKEN}" if CALENDAR_FEED_TOKEN else "",
     })
 
 
@@ -976,6 +1012,23 @@ def api_admin_backup():
         return denied
     path = backup_database(DB_PATH, BACKUPS_DIR, BACKUP_KEEP, "manual")
     return jsonify({"status": "ok", "file": path.name if path else None})
+
+
+@app.get("/calendar.ics")
+def calendar_feed():
+    supplied = request.args.get("token", "")
+    if not CALENDAR_FEED_TOKEN or not supplied or not hmac.compare_digest(supplied, CALENDAR_FEED_TOKEN):
+        return Response(status=404)
+    with connect(DB_PATH) as conn:
+        bookings = [dict(row) for row in conn.execute(
+            """SELECT * FROM bookings WHERE status='confirmed' ORDER BY date,start_time"""
+        ).fetchall()]
+    response = Response(_calendar_feed_ics(bookings), mimetype="text/calendar; charset=utf-8")
+    response.headers["Content-Disposition"] = 'inline; filename="chez-philipp.ics"'
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 @app.get("/")
